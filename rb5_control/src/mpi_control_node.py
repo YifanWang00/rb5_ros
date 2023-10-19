@@ -30,9 +30,9 @@ class MegaPiControllerNode:
     def __init__(self, verbose=True, debug=False):
         self.mpi_ctrl = MegaPiController(port='/dev/ttyUSB0', verbose=verbose)
 
-        self.v_max_default_straight = 100
-        self.v_max_default_slide = 100
-        self.v_max_default_rotate = 50
+        self.v_max_default_straight = 50
+        self.v_max_default_slide = 50
+        self.v_max_default_rotate = 25
         self.reset_v_max()
 
         self.verbose = verbose
@@ -56,6 +56,7 @@ class MegaPiControllerNode:
         if joy_cmd.buttons[4] == 1:
             if self.state == "run":
                 self.state = "stop"
+                self.mpi_ctrl.carStop()
             elif self.state == "stop":
                 self.state = "run"
             print("switch")
