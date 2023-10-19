@@ -55,6 +55,7 @@ class KeyJoyNode:
         # used to start and stop the test
         if key == 'k':
             joy_msg.buttons[4] == 1
+            print("k")
 
         # joy_msg.axes only change one index => carMixed unable
         if key == 'w':
