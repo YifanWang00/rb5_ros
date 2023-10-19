@@ -84,5 +84,5 @@ class KeyJoyNode:
 
 if __name__ == "__main__":
     key_joy_node = KeyJoyNode()
-    rospy.init_node("key_joy")
+    rospy.init_node("key_joy_test")
     key_joy_node.run()
