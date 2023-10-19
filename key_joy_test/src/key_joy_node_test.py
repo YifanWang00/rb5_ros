@@ -54,7 +54,7 @@ class KeyJoyNode:
 
         # used to start and stop the test
         if key == 'k':
-            joy_msg.buttons[4] == 1
+            joy_msg.buttons[4] = 1
             print("k")
             print(joy_msg.buttons[4])
 
