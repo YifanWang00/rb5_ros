@@ -33,16 +33,19 @@ class MegaPiController:
     def __init__(self, port='/dev/ttyUSB0', verbose=True):
         self.port = port
         self.verbose = verbose
+
         if verbose:
             self.printConfiguration()
+
         self.bot = MegaPi()
         self.bot.start(port=port)
+
         self.mfr = MFR  # port for motor front right
         self.mbl = MBL  # port for motor back left
         self.mbr = MBR  # port for motor back right
         self.mfl = MFL  # port for motor front left   
-
     
+
     def printConfiguration(self):
         print('MegaPiController:')
         print("Communication Port:" + repr(self.port))
@@ -69,7 +72,7 @@ class MegaPiController:
             print("CAR STOP:")
         self.setFourMotors()
 
-
+    ####################### KEY: Calibrating the wheel motors
     def carStraight(self, speed):
         if self.verbose:
             print("CAR STRAIGHT:")
@@ -87,7 +90,7 @@ class MegaPiController:
             print("CAR SLIDE:")
         self.setFourMotors(speed, speed, -speed, -speed)
 
-    
+    #kinematic model
     def carMixed(self, v_straight, v_rotate, v_slide):
         if self.verbose:
             print("CAR MIXED")
@@ -97,6 +100,7 @@ class MegaPiController:
             v_rotate-v_straight-v_slide,
             v_rotate+v_straight-v_slide
         )
+    #######################    
     
     def close(self):
         self.bot.close()

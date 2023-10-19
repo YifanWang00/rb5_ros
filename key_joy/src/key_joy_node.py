@@ -45,25 +45,32 @@ class KeyJoyNode:
     
         self.stop()
 
+    # constant
     def key_to_joy(self, key):
         flag = True
         joy_msg = Joy()
         joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
         joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+
+        # joy_msg.axes only change one index => carMixed unable
         if key == 'w':
             joy_msg.axes[1] = 1.0
         elif key == 's':
             joy_msg.axes[1] = -1.0
+
         elif key == 'a':
             joy_msg.axes[0] = -1.0
         elif key == 'd':
             joy_msg.axes[0] = 1.0
+
         elif key == 'q':
             joy_msg.axes[2] = -1.0
         elif key == 'e':
             joy_msg.axes[2] = 1.0
+
         elif (len(key) > 0 and ord(key) == 27) or (key == '\x03'):
             flag = False
+
         return joy_msg, flag
     
 
