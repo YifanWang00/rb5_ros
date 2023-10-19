@@ -56,6 +56,7 @@ class KeyJoyNode:
         if key == 'k':
             joy_msg.buttons[4] == 1
             print("k")
+            print(joy_msg.buttons[4])
 
         # joy_msg.axes only change one index => carMixed unable
         if key == 'w':

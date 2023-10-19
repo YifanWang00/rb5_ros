@@ -58,6 +58,7 @@ class MegaPiControllerNode:
                 self.state = "stop"
             elif self.state == "stop":
                 self.state = "run"
+            print("switch")
 
         if self.state == "stop":
             print('Vehicle in the stop state.')
