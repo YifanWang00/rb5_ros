@@ -52,6 +52,10 @@ class KeyJoyNode:
         joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
         joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
 
+        # used to start and stop the test
+        if key == 'k':
+            joy_msg.buttons[4] == 1
+
         # joy_msg.axes only change one index => carMixed unable
         if key == 'w':
             joy_msg.axes[1] = 1.0

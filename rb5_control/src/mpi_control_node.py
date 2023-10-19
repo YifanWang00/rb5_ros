@@ -38,7 +38,7 @@ class MegaPiControllerNode:
         self.verbose = verbose
         self.debug = debug
 
-        self.state = "run"
+        self.state = "stop"
     
 
     def reset_v_max(self):
