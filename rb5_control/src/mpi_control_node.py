@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 """ MegaPi Controller ROS Wrapper"""
 import rospy
+import time
 
 from sensor_msgs.msg import Joy
 from mpi_control import MegaPiController
@@ -38,8 +39,14 @@ class MegaPiControllerNode:
         self.verbose = verbose
         self.debug = debug
 
+        self.start_time = 0
+        self.end_time = 0
+
         self.state = "stop"
-    
+
+    def record_interval(self, interval, path):
+        with open(path, 'a') as f:
+            f.write("Total time = {}s\n".format(interval))
 
     def reset_v_max(self):
         self.v_max_straight = self.v_max_default_straight
@@ -54,11 +61,15 @@ class MegaPiControllerNode:
 
         #change state not used
         if joy_cmd.buttons[4] == 1:
-            if self.state == "run":
+            if self.state == "stop":
+                self.state = "run"
+                self.start_time = time.time()
+            elif self.state == "run":
                 self.state = "stop"
                 self.mpi_ctrl.carStop()
-            elif self.state == "stop":
-                self.state = "run"
+                self.end_time = time.time()
+                interval = self.end_time - self.start_time
+                self.record_interval(interval, '/root/rb5_ws/src/rb5_ros/logger/interval.log')
             print("switch")
 
         if self.state == "stop":
