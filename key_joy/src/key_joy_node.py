@@ -86,6 +86,7 @@ class KeyJoyNode:
                     rotation_after_move -= 2 * math.pi
                 while rotation_after_move < -math.pi:
                     rotation_after_move += 2 * math.pi
+                rotation_after_move = round(rotation_after_move, 2)
                 results.append(['move', angle_diff, distance, rotation_after_move])
             # For 'rotate' actions
             else:
@@ -103,6 +104,7 @@ class KeyJoyNode:
                     rotation_angle_change_2 -= 2 * math.pi
                 while rotation_angle_change_2 < -math.pi:
                     rotation_angle_change_2 += 2 * math.pi
+                rotation_angle_change_2 = round(rotation_angle_change_2, 2)
                 results.append(['rotate', rotation_angle_change_1, angle_difference_robot_target_1, distance, rotation_angle_change_2])
         return results
 
