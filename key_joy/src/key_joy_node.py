@@ -31,6 +31,7 @@ class KeyJoyNode:
     def __init__(self):
         self.pub_joy = rospy.Publisher("/joy", Joy, queue_size=1)
         self.settings = save_terminal_settings()
+        self.i = 0
 
     #Reads the nth line from the given file path and returns the values as x, y, and z.
     def read_nth_line(self, file_path, n):
@@ -236,16 +237,23 @@ class KeyJoyNode:
             joy_msg, command_time = self.execute_command(cmd, joy_msg)
             print('\n')
             # publish joy
+            self.i = self.i + 1
+            print(i)
+            print('\n')
             print(joy_msg.axes)
             self.pub_joy.publish(joy_msg)
             print('\n')
             print('sent')
             time.sleep(command_time)
             print('complete')
+
             print('\n')
             joy_msg = Joy()
             joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
             joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+            self.i = self.i + 1
+            print(i)
+            print('\n')
             self.pub_joy.publish(joy_msg)
             time.sleep(0.5)  # Waits for 2 seconds before moving to the next iteration
 
@@ -253,6 +261,9 @@ class KeyJoyNode:
         joy_msg = Joy()
         joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
         joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.i = self.i + 1
+        print(i)
+        print('\n')
         self.pub_joy.publish(joy_msg)
         self.stop()
 

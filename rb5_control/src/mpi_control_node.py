@@ -44,6 +44,8 @@ class MegaPiControllerNode:
 
         self.state = "run"
 
+        self.i = 0
+
     def record_interval(self, interval, path):
         with open(path, 'a') as f:
             f.write("Total time = {}s\n".format(interval))
@@ -108,9 +110,12 @@ class MegaPiControllerNode:
                   ' v_straight: ' + repr(int(round(v_straight, 2))) + '/' + repr(self.v_max_straight) +
                   ' v_slide: '+ repr(int(round(v_slide, 2))) + '/' + repr(self.v_max_slide) +
                   ' v_rotate: ' + repr(int(round(v_rotate, 2))) + '/' + repr(self.v_max_rotate))
-
+        
+        self.i = self.i + 1
+        print(self.i)
         print(joy_cmd.axes)
         print('/n')
+
         if abs(joy_cmd.axes[2]) <= 0.1:
             if abs(joy_cmd.axes[0]) <= 0.1 and abs(joy_cmd.axes[1]) <= 0.1:
                 self.mpi_ctrl.carStop()
