@@ -111,7 +111,7 @@ class KeyJoyNode:
         return results
 
 
-    def generate_control_commands(self, detailed_info, linear_velocity, angular_velocity):
+    def generate_control_commands(self, detailed_info, linear_velocity_1, linear_velocity_2, angular_velocity):
         """
         Converts the detailed movement information into specific control commands and required times.
         """
@@ -124,7 +124,10 @@ class KeyJoyNode:
             if action_type == 'move':
                 _, direction, distance, rotation_after_move = action_info
                 # Calculate move time and rotation time
-                move_time = distance / linear_velocity
+                if direction == 0 or direction == 3.14:
+                   move_time = distance / linear_velocity_1
+                else:
+                    move_time = distance / linear_velocity_2
                 rotation_time = abs(rotation_after_move) / angular_velocity
                 control_commands.append({"command": "move", "direction": direction, "time": move_time})
                 if rotation_time > 0.1:  # Only add a rotate command if there's a need to rotate after moving
@@ -135,7 +138,7 @@ class KeyJoyNode:
                 _, rotation_angle_change_1, direction, distance, rotation_angle_change_2 = action_info
                 # Calculate rotation times and move time
                 rotation_time_1 = abs(rotation_angle_change_1) / angular_velocity
-                move_time = distance / linear_velocity
+                move_time = distance / linear_velocity_1
                 rotation_time_2 = abs(rotation_angle_change_2) / angular_velocity
                 control_commands.append({"command": "rotate", "angle": rotation_angle_change_1, "time": rotation_time_1})
                 control_commands.append({"command": "move", "direction": direction, "time": move_time})
@@ -222,11 +225,12 @@ class KeyJoyNode:
         #
 
         # Sample linear_velocity and angular_velocity
-        linear_velocity = 0.5  # m/s
-        angular_velocity = 0.5  # rad/s
+        linear_velocity_1 = 0.21 * 2   # m/s
+        linear_velocity_2 = 0.145 * 2   # m/s
+        angular_velocity = 1.815  # rad/s
 
         # Generate control commands
-        control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity, angular_velocity)
+        control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity_1, linear_velocity_2, angular_velocity)
 
         joy_msg = Joy()
         joy_msg.axes = [0.0 ,1.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
