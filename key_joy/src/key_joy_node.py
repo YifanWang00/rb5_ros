@@ -235,33 +235,35 @@ class KeyJoyNode:
         print(self.i)
         print('\n')
 
-        joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        self.i = self.i + 1
-        print(self.i)
-        print('\n')
+        time.sleep(1)
 
-        joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        self.i = self.i + 1
-        print(self.i)
-        print('\n')
+        # joy_msg = Joy()
+        # joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        # joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        # self.i = self.i + 1
+        # print(self.i)
+        # print('\n')
 
-        joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        self.i = self.i + 1
-        print(self.i)
-        print('\n')
+        # joy_msg = Joy()
+        # joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        # joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        # self.i = self.i + 1
+        # print(self.i)
+        # print('\n')
 
-        joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        self.i = self.i + 1
-        print(self.i)
-        print('\n')
+        # joy_msg = Joy()
+        # joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        # joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        # self.i = self.i + 1
+        # print(self.i)
+        # print('\n')
+
+        # joy_msg = Joy()
+        # joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        # joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        # self.i = self.i + 1
+        # print(self.i)
+        # print('\n')
 
         for cmd in control_commands:
             print('\n')
