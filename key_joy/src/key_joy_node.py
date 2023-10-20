@@ -198,8 +198,9 @@ class KeyJoyNode:
         control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity, angular_velocity)
         print(control_commands)
 
-        for i in range(5):
-            print(i)
+        for items in control_commands:
+            print(items)
+            print('\n')
             time.sleep(1)  # Waits for 2 seconds before moving to the next iteration
 
         self.stop()
