@@ -28,7 +28,7 @@ from mpi_control import MegaPiController
 
 
 class MegaPiControllerNode:
-    def __init__(self, verbose=True, debug=False, calibration=False):
+    def __init__(self, verbose=True, debug=False, calibration=True):
         self.mpi_ctrl = MegaPiController(port='/dev/ttyUSB0', verbose=verbose)
 
         self.v_max_default_straight = 50
@@ -40,7 +40,7 @@ class MegaPiControllerNode:
         self.debug = debug
         self.calibration = calibration
         if self.calibration:
-            self.log_path = '../log_file'
+            self.log_path = '/root/rb5_ws/src/rb5_ros/calibration/log_file/test.log'
 
         self.start_time = 0
         self.end_time = 0
