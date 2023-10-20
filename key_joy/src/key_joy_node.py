@@ -29,19 +29,33 @@ class KeyJoyNode:
         self.pub_joy = rospy.Publisher("/joy", Joy, queue_size=1)
         self.settings = save_terminal_settings()
 
+    #Reads the nth line from the given file path and returns the values as x, y, and z.
+    def read_nth_line(self, file_path, n):
+        with open(file_path, "r") as file:
+            lines = file.readlines()
+            if n <= len(lines):
+                x, y, z = map(float, lines[n-1].split(','))  # Indexing starts from 0
+                return x, y, z
 
     def run(self):
-        while True:
-            # parse keyboard control
-            key = get_key(self.settings, timeout=0.1)
+        # while True:
+        #     # parse keyboard control
+        #     key = get_key(self.settings, timeout=0.1)
 
-            # interpret keyboard control as joy
-            joy_msg, flag = self.key_to_joy(key)
-            if flag is False:
-                break
+        #     # interpret keyboard control as joy
+        #     joy_msg, flag = self.key_to_joy(key)
+        #     if flag is False:
+        #         break
 
-            # publish joy
-            self.pub_joy.publish(joy_msg)
+        #     # publish joy
+        #     self.pub_joy.publish(joy_msg)
+        print("start")
+        num_lines = sum(1 for line in open('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt'))
+        print(num_lines)
+        for i in range(1, num_lines + 1):
+            x, y, z = self.read_nth_line('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt', i)
+            print(x, y, z)
+
     
         self.stop()
 
