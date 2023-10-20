@@ -222,11 +222,18 @@ class KeyJoyNode:
         #
 
         # Sample linear_velocity and angular_velocity
-        linear_velocity = 0.2  # m/s
-        angular_velocity = 0.2  # rad/s
+        linear_velocity = 0.5  # m/s
+        angular_velocity = 0.5  # rad/s
 
         # Generate control commands
         control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity, angular_velocity)
+
+        joy_msg = Joy()
+        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.i = self.i + 1
+        print(self.i)
+        print('\n')
 
         for cmd in control_commands:
             print('\n')
