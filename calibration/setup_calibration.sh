@@ -41,7 +41,7 @@ if [ $? != 0 ]; then
   # Run source command and roslaunch command in the bottom pane
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 2" C-m
-  tmux send-keys "rosrun calibration key_joy_node_test.py" C-m
+  tmux send-keys "rosrun calibration calibration_node.py" C-m
 
   # Attach to the tmux session to interact with it
   tmux attach -t calibration
@@ -49,6 +49,6 @@ if [ $? != 0 ]; then
 else
   echo "Tmux session 'calibration' already exists. Restarting..."
   tmux kill-ses -t calibration
-  /root/script/setup_calibration.sh
+  /root/rb5_ws/src/rb5_ros/calibration/setup_calibration.sh
 fi
 

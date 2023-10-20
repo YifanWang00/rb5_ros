@@ -28,7 +28,7 @@ from mpi_control import MegaPiController
 
 
 class MegaPiControllerNode:
-    def __init__(self, verbose=True, debug=False):
+    def __init__(self, verbose=True, debug=False, calibration=False):
         self.mpi_ctrl = MegaPiController(port='/dev/ttyUSB0', verbose=verbose)
 
         self.v_max_default_straight = 50
@@ -38,6 +38,9 @@ class MegaPiControllerNode:
 
         self.verbose = verbose
         self.debug = debug
+        self.calibration = calibration
+        if self.calibration:
+            self.log_path = '../log_file'
 
         self.start_time = 0
         self.end_time = 0
@@ -59,18 +62,19 @@ class MegaPiControllerNode:
             print('buttons:', joy_cmd.buttons)
             print('axes:', [round(axe,2) for axe in joy_cmd.axes])
 
-        #change state not used
-        if joy_cmd.buttons[4] == 1:
-            if self.state == "stop":
-                self.state = "run"
-                self.start_time = time.time()
-            elif self.state == "run":
-                self.state = "stop"
-                self.mpi_ctrl.carStop()
-                self.end_time = time.time()
-                interval = self.end_time - self.start_time
-                self.record_interval(interval, '/root/rb5_ws/src/rb5_ros/logger/interval.log')
-            print("switch")
+        if self.calibration:
+            if joy_cmd.buttons[4] or joy_cmd.buttons[2]:
+                if self.state == "stop":
+                    self.state = "run"
+                    self.start_time = time.time()
+                elif self.state == "run":
+                    self.state = "stop"
+                    self.mpi_ctrl.carStop()
+                    self.end_time = time.time()
+                    interval = self.end_time - self.start_time
+                    self.record_interval(interval, self.log_path)
+                print("switch")
+            
 
         if self.state == "stop":
             print('Vehicle in the stop state.')

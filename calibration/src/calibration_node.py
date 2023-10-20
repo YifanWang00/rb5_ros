@@ -24,7 +24,7 @@ import rospy
 from sensor_msgs.msg import Joy
 from key_parser import get_key, save_terminal_settings, restore_terminal_settings
 
-class KeyJoyNode:
+class CalibrationNode:
     def __init__(self):
         self.pub_joy = rospy.Publisher("/joy", Joy, queue_size=1)
         self.settings = save_terminal_settings()
@@ -49,17 +49,47 @@ class KeyJoyNode:
     def key_to_joy(self, key):
         flag = True
         joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,1.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
         joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
 
         # used to start and stop the tests
-        if key == 'k':
+        # Reset max speed
+        if key == 'r':
+            joy_msg.buttons[5] = 1
+            print('r')
+        
+        # Start / Stop the car from going straight / rotation
+        elif key == 'n':
             joy_msg.buttons[4] = 1
-            print("k")
-            print(joy_msg.buttons[4])
+            joy_msg.axes[1] = 1.0
+            print('n')
+        elif key == 'm':
+            joy_msg.buttons[2] = 1
+            joy_msg.axes[2] = 1.0
+            print('m')
+
+        
+        # Increse / decrease slide speed
+        elif key == 't':
+            joy_msg.axes[4] = 1.0
+        elif key == 'g':
+            joy_msg.axes[4] = -1.0
+
+        # Increse / decrease straight speed
+        elif key == 'y':
+            joy_msg.axes[5] = 1.0
+        elif key == 'h':
+            joy_msg.axes[5] = -1.0
+
+        # Increse / decrease rotate speed
+        elif key == 'u':
+            joy_msg.buttons[1] = 1
+        elif key == 'j':
+            joy_msg.buttons[3] = 1
+
 
         # joy_msg.axes only change one index => carMixed unable
-        if key == 'w':
+        elif key == 'w':
             joy_msg.axes[1] = 1.0
         elif key == 's':
             joy_msg.axes[1] = -1.0
@@ -85,6 +115,6 @@ class KeyJoyNode:
 
 
 if __name__ == "__main__":
-    key_joy_node = KeyJoyNode()
+    key_joy_node = CalibrationNode()
     rospy.init_node("calibration")
     key_joy_node.run()
