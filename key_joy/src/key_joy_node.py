@@ -169,11 +169,11 @@ class KeyJoyNode:
             if command_detail["angle"] > 0:
                 # Execute clockwise rotation
                 print("Rotating clockwise")
-                joy_msg.axes[0] = 1.0
+                joy_msg.axes[2] = 1.0
             else:
                 # Execute counter-clockwise rotation
                 print("Rotating counter-clockwise")
-                joy_msg.axes[0] = -1.0
+                joy_msg.axes[2] = -1.0
         command_time = command_detail["time"]
         return joy_msg, command_time
 
