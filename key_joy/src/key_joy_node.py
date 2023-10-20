@@ -238,12 +238,12 @@ class KeyJoyNode:
             print('\n')
             # publish joy
             self.i = self.i + 1
-            print(i)
+            print(self.i)
             print('\n')
             print(joy_msg.axes)
             self.pub_joy.publish(joy_msg)
             print('\n')
-            print('sent')
+            print('sent')   
             time.sleep(command_time)
             print('complete')
 
@@ -252,7 +252,7 @@ class KeyJoyNode:
             joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
             joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
             self.i = self.i + 1
-            print(i)
+            print(self.i)
             print('\n')
             self.pub_joy.publish(joy_msg)
             time.sleep(0.5)  # Waits for 2 seconds before moving to the next iteration
@@ -262,7 +262,7 @@ class KeyJoyNode:
         joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
         joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
         self.i = self.i + 1
-        print(i)
+        print(self.i)
         print('\n')
         self.pub_joy.publish(joy_msg)
         self.stop()
