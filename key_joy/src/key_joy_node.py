@@ -143,6 +143,31 @@ class KeyJoyNode:
 
         return control_commands
 
+    def execute_command(self,command_detail):
+        """
+        Executes the given command based on the details provided.
+        """
+        if command_detail["command"] == "move":
+            if abs(command_detail["direction"] - 0) <= 0.05:
+                # Execute move in the 0 direction
+                print("Moving in direction: 0")
+            elif abs(command_detail["direction"] - 3.14) <= 0.05:
+                # Execute move in the 3.14 direction
+                print("Moving in direction: 3.14")
+            elif abs(command_detail["direction"] - 1.57) <= 0.05:
+                # Execute move in the 1.57 direction
+                print("Moving in direction: 1.57")
+            elif abs(command_detail["direction"] + 1.57) <= 0.05:
+                # Execute move in the -1.57 direction
+                print("Moving in direction: -1.57")
+        elif command_detail["command"] == "rotate":
+            if command_detail["angle"] > 0:
+                # Execute clockwise rotation
+                print(f"Rotating clockwise by {command_detail['angle']} radians")
+            else:
+                # Execute counter-clockwise rotation
+                print(f"Rotating counter-clockwise by {abs(command_detail['angle'])} radians")
+
 
 
 
@@ -196,10 +221,9 @@ class KeyJoyNode:
 
         # Generate control commands
         control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity, angular_velocity)
-        print(control_commands)
 
-        for items in control_commands:
-            print(items)
+        for cmd in control_commands:
+            self.execute_command(cmd)
             print('\n')
             time.sleep(1)  # Waits for 2 seconds before moving to the next iteration
 
