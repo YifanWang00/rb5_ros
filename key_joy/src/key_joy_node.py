@@ -66,6 +66,9 @@ class KeyJoyNode:
                 actions.append("rotate")
                 
         return actions
+    
+    def calculate_distance(self, point1, point2):
+        return math.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
 
     def run(self):
         # while True:
@@ -80,19 +83,36 @@ class KeyJoyNode:
         #     # publish joy
         #     self.pub_joy.publish(joy_msg)
         print("start")
+
         all_coordinates = []
 
         num_lines = sum(1 for line in open('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt'))
+        #
         print(num_lines)
+        #
+
         for i in range(1, num_lines + 1):
             x, y, z = self.read_nth_line('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt', i)
             all_coordinates.append((x, y, z))
         
+        #
         print(all_coordinates)
-    
+        #
+
         movement_order_with_tolerance = self.decide_movement_order_with_tolerance(all_coordinates)
+
+        #
         print(movement_order_with_tolerance)
+        #
+
+        distances = []
+        for i in range(len(all_coordinates) - 1):
+            current_x, current_y, _ = all_coordinates[i]
+            target_x, target_y, _ = all_coordinates[i+1]
+            distance = self.calculate_distance((current_x, current_y),(target_x, target_y))
+            distances.append(distance)
         
+        print(distances)
         self.stop()
 
     # constant
