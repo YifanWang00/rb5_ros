@@ -50,12 +50,15 @@ class KeyJoyNode:
         #     # publish joy
         #     self.pub_joy.publish(joy_msg)
         print("start")
+        all_coordinates = []
+
         num_lines = sum(1 for line in open('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt'))
         print(num_lines)
         for i in range(1, num_lines + 1):
             x, y, z = self.read_nth_line('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt', i)
-            print(x, y, z)
-
+            all_coordinates.append((x, y, z))
+        
+        print(all_coordinates)
     
         self.stop()
 
