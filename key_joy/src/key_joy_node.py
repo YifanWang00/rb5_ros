@@ -61,9 +61,14 @@ class KeyJoyNode:
             
             # Check if the difference is within the acceptable values or within the tolerance
             if abs(angle_difference) < tolerance or round(angle_difference % 3.14, 2) in [0, 3.14, 1.57, -1.57]:
-                actions.append("move")
+                closest_angle = min([0, 3.14, 1.57, -1.57], key=lambda x: abs(x-angle_difference))
+                actions.append(['move', closest_angle])
             else:
-                actions.append("rotate")
+                # Compare with 0 and 3.14 to decide the rotation angle
+                if abs(angle_difference) < abs(angle_difference - math.pi):
+                    actions.append(['rotate', angle_difference])
+                else:
+                    actions.append(['rotate', angle_difference - math.pi])
                 
         return actions
     
