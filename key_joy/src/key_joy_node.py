@@ -166,7 +166,7 @@ class KeyJoyNode:
                 print("Rotating clockwise")
             else:
                 # Execute counter-clockwise rotation
-                print(f"Rotating counter-clockwise")
+                print("Rotating counter-clockwise")
 
 #####
 
