@@ -76,19 +76,19 @@ class MegaPiController:
     def carStraight(self, speed):
         if self.verbose:
             print("CAR STRAIGHT:")
-        self.setFourMotors(-1.1*speed, speed, -1.1*speed, speed)
+        self.setFourMotors(-1*speed, speed, -1*speed, speed)
 
 
     def carRotate(self, speed):
         if self.verbose:
             print("CAR ROTATE:")
-        self.setFourMotors(speed, speed, speed, speed)
+        self.setFourMotors(1.6*speed, 1.65*speed, 1.6*speed, 1.6*speed)
 
 
     def carSlide(self, speed):
         if self.verbose:
             print("CAR SLIDE:")
-        self.setFourMotors(speed, speed, -speed, -speed)
+        self.setFourMotors(1.1*speed, 0.9*speed, -0.9*speed, -1.1*speed)
 
     #kinematic model
     def carMixed(self, v_straight, v_rotate, v_slide):
