@@ -42,7 +42,7 @@ class MegaPiControllerNode:
         self.start_time = 0
         self.end_time = 0
 
-        self.state = "stop"
+        self.state = "run"
 
     def record_interval(self, interval, path):
         with open(path, 'a') as f:
