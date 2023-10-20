@@ -163,14 +163,10 @@ class KeyJoyNode:
         elif command_detail["command"] == "rotate":
             if command_detail["angle"] > 0:
                 # Execute clockwise rotation
-                print(f"Rotating clockwise by {command_detail['angle']} radians")
+                print("Rotating clockwise")
             else:
                 # Execute counter-clockwise rotation
-                print(f"Rotating counter-clockwise by {abs(command_detail['angle'])} radians")
-
-
-
-
+                print(f"Rotating counter-clockwise")
 
 #####
 
