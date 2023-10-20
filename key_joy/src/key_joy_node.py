@@ -229,7 +229,7 @@ class KeyJoyNode:
         control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity, angular_velocity)
 
         joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        joy_msg.axes = [0.0 ,1.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
         joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
         self.i = self.i + 1
         print(self.i)
