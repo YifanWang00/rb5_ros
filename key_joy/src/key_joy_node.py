@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import sys
 import rospy
+import time
 import math
 
 from sensor_msgs.msg import Joy
@@ -108,6 +109,44 @@ class KeyJoyNode:
                 results.append(['rotate', rotation_angle_change_1, angle_difference_robot_target_1, distance, rotation_angle_change_2])
         return results
 
+
+    def generate_control_commands(self, detailed_info, linear_velocity, angular_velocity):
+        """
+        Converts the detailed movement information into specific control commands and required times.
+        """
+        control_commands = []
+
+        for action_info in detailed_info:
+            action_type = action_info[0]
+
+            # For 'move' actions
+            if action_type == 'move':
+                _, direction, distance, rotation_after_move = action_info
+                # Calculate move time and rotation time
+                move_time = distance / linear_velocity
+                rotation_time = abs(rotation_after_move) / angular_velocity
+                control_commands.append({"command": "move", "direction": direction, "time": move_time})
+                if rotation_time > 0.1:  # Only add a rotate command if there's a need to rotate after moving
+                    control_commands.append({"command": "rotate", "angle": rotation_after_move, "time": rotation_time})
+
+            # For 'rotate' actions
+            elif action_type == 'rotate':
+                _, rotation_angle_change_1, direction, distance, rotation_angle_change_2 = action_info
+                # Calculate rotation times and move time
+                rotation_time_1 = abs(rotation_angle_change_1) / angular_velocity
+                move_time = distance / linear_velocity
+                rotation_time_2 = abs(rotation_angle_change_2) / angular_velocity
+                control_commands.append({"command": "rotate", "angle": rotation_angle_change_1, "time": rotation_time_1})
+                control_commands.append({"command": "move", "direction": direction, "time": move_time})
+                if rotation_time_2 > 0.1:  # Only add a rotate command if there's a need to rotate after moving
+                    control_commands.append({"command": "rotate", "angle": rotation_angle_change_2, "time": rotation_time_2})
+
+        return control_commands
+
+
+
+
+
 #####
 
     def run(self):
@@ -150,6 +189,18 @@ class KeyJoyNode:
         #
         print(detailed_move_rotate_info)
         #
+
+        # Sample linear_velocity and angular_velocity
+        linear_velocity = 1.0  # m/s
+        angular_velocity = 1.0  # rad/s
+
+        # Generate control commands
+        control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity, angular_velocity)
+        print(control_commands)
+
+        for i in range(5):
+            print(f"Loop iteration: {i}")
+            time.sleep(1)  # Waits for 2 seconds before moving to the next iteration
 
         self.stop()
 
