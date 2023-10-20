@@ -156,7 +156,6 @@ class KeyJoyNode:
                 # Execute move in the 3.14 direction
                 print("Moving in direction: 3.14")
                 joy_msg.axes[1] = -1.0
-                print(joy_msg.axes)
             elif abs(command_detail["direction"] - 1.57) <= 0.05:
                 # Execute move in the 1.57 direction
                 print("Moving in direction: 1.57")
@@ -237,7 +236,10 @@ class KeyJoyNode:
             joy_msg, command_time = self.execute_command(cmd, joy_msg)
             print('\n')
             # publish joy
+            print(joy_msg.axes)
             self.pub_joy.publish(joy_msg)
+            print('\n')
+            print('sent')
             time.sleep(command_time)
             print('complete')
             print('\n')
