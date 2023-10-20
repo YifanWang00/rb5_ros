@@ -243,7 +243,7 @@ class KeyJoyNode:
             print(joy_msg.axes)
             self.pub_joy.publish(joy_msg)
             print('\n')
-            print('sent')
+            print('sent')   
             time.sleep(command_time)
             print('complete')
 
