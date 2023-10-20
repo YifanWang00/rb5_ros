@@ -49,8 +49,14 @@ class KeyJoyNode:
     def key_to_joy(self, key):
         flag = True
         joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        joy_msg.axes = [0.0 ,0.0 ,1.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
         joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+
+        # used to start and stop the tests
+        if key == 'k':
+            joy_msg.buttons[4] = 1
+            print("k")
+            print(joy_msg.buttons[4])
 
         # joy_msg.axes only change one index => carMixed unable
         if key == 'w':
@@ -80,5 +86,5 @@ class KeyJoyNode:
 
 if __name__ == "__main__":
     key_joy_node = KeyJoyNode()
-    rospy.init_node("key_joy")
+    rospy.init_node("key_joy_test")
     key_joy_node.run()

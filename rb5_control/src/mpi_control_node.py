@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 """ MegaPi Controller ROS Wrapper"""
 import rospy
+import time
 
 from sensor_msgs.msg import Joy
 from mpi_control import MegaPiController
@@ -29,34 +30,53 @@ from mpi_control import MegaPiController
 class MegaPiControllerNode:
     def __init__(self, verbose=True, debug=False):
         self.mpi_ctrl = MegaPiController(port='/dev/ttyUSB0', verbose=verbose)
-        self.v_max_default_straight = 100
-        self.v_max_default_slide = 100
-        self.v_max_default_rotate = 50
+
+        self.v_max_default_straight = 50
+        self.v_max_default_slide = 50
+        self.v_max_default_rotate = 25
         self.reset_v_max()
+
         self.verbose = verbose
         self.debug = debug
-        self.state = "run"
-    
+
+        self.start_time = 0
+        self.end_time = 0
+
+        self.state = "stop"
+
+    def record_interval(self, interval, path):
+        with open(path, 'a') as f:
+            f.write("Total time = {}s\n".format(interval))
 
     def reset_v_max(self):
         self.v_max_straight = self.v_max_default_straight
         self.v_max_slide = self.v_max_default_slide
         self.v_max_rotate = self.v_max_default_rotate
 
-
     def joy_callback(self, joy_cmd):
+
         if self.debug:
             print('buttons:', joy_cmd.buttons)
             print('axes:', [round(axe,2) for axe in joy_cmd.axes])
+
+        #change state not used
         if joy_cmd.buttons[4] == 1:
-            if self.state == "run":
-                self.state = "stop"
-            elif self.state == "stop":
+            if self.state == "stop":
                 self.state = "run"
+                self.start_time = time.time()
+            elif self.state == "run":
+                self.state = "stop"
+                self.mpi_ctrl.carStop()
+                self.end_time = time.time()
+                interval = self.end_time - self.start_time
+                self.record_interval(interval, '/root/rb5_ws/src/rb5_ros/logger/interval.log')
+            print("switch")
+
         if self.state == "stop":
             print('Vehicle in the stop state.')
             return
         
+        #reset_v_max not used
         if joy_cmd.buttons[5] == 1:
             print('Reset max speed')
             self.reset_v_max()
@@ -69,6 +89,7 @@ class MegaPiControllerNode:
         v_straight = self.v_max_straight * joy_cmd.axes[1]
         v_rotate = self.v_max_rotate * joy_cmd.axes[2]
 
+        #set v max not used
         if joy_cmd.axes[4] > 0:
             self.v_max_slide -= 10
         elif joy_cmd.axes[4] < 0:
@@ -96,12 +117,12 @@ class MegaPiControllerNode:
             elif abs(joy_cmd.axes[1]) <= 0.1:
                 self.mpi_ctrl.carSlide(v_slide)
             else:
-                self.mpi_ctrl.carMixed(v_straight, 0, v_slide)
+                self.mpi_ctrl.carMixed(v_straight, 0, v_slide) #unreachable because of input 
         else:
             if abs(joy_cmd.axes[0]) <= 0.1 and abs(joy_cmd.axes[1]) <= 0.1:
                 self.mpi_ctrl.carRotate(v_rotate)
             else:
-                self.mpi_ctrl.carMixed(v_straight, v_rotate, v_slide)
+                self.mpi_ctrl.carMixed(v_straight, v_rotate, v_slide) #unreachable because of input 
         
 
 if __name__ == "__main__":
