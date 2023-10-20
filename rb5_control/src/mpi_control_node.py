@@ -109,6 +109,8 @@ class MegaPiControllerNode:
                   ' v_slide: '+ repr(int(round(v_slide, 2))) + '/' + repr(self.v_max_slide) +
                   ' v_rotate: ' + repr(int(round(v_rotate, 2))) + '/' + repr(self.v_max_rotate))
 
+        print(joy_cmd.axes)
+        print('/n')
         if abs(joy_cmd.axes[2]) <= 0.1:
             if abs(joy_cmd.axes[0]) <= 0.1 and abs(joy_cmd.axes[1]) <= 0.1:
                 self.mpi_ctrl.carStop()
