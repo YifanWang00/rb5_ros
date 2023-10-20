@@ -143,30 +143,39 @@ class KeyJoyNode:
 
         return control_commands
 
-    def execute_command(self,command_detail):
+    def execute_command(self,command_detail, joy_msg):
         """
         Executes the given command based on the details provided.
         """
         if command_detail["command"] == "move":
             if abs(command_detail["direction"] - 0) <= 0.05:
                 # Execute move in the 0 direction
-                print("Moving in direction: 0")
+                print("Moving in direction: 0, time:",command_detail["time"])
+                joy_msg.axes[1] = 1.0
             elif abs(command_detail["direction"] - 3.14) <= 0.05:
                 # Execute move in the 3.14 direction
                 print("Moving in direction: 3.14")
+                joy_msg.axes[1] = -1.0
             elif abs(command_detail["direction"] - 1.57) <= 0.05:
                 # Execute move in the 1.57 direction
                 print("Moving in direction: 1.57")
+                joy_msg.axes[0] = -1.0
             elif abs(command_detail["direction"] + 1.57) <= 0.05:
                 # Execute move in the -1.57 direction
                 print("Moving in direction: -1.57")
+                joy_msg.axes[0] = 1.0
+
         elif command_detail["command"] == "rotate":
             if command_detail["angle"] > 0:
                 # Execute clockwise rotation
                 print("Rotating clockwise")
+                joy_msg.axes[0] = 1.0
             else:
                 # Execute counter-clockwise rotation
                 print("Rotating counter-clockwise")
+                joy_msg.axes[0] = -1.0
+        command_time = command_detail[time]
+        return joy_msg, command_time
 
 #####
 
@@ -219,10 +228,29 @@ class KeyJoyNode:
         control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity, angular_velocity)
 
         for cmd in control_commands:
-            self.execute_command(cmd)
             print('\n')
-            time.sleep(1)  # Waits for 2 seconds before moving to the next iteration
 
+            joy_msg = Joy()
+            joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+            joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+            joy_msg, command_time = self.execute_command(cmd, joy_msg)
+            print('\n')
+            # publish joy
+            self.pub_joy.publish(joy_msg)
+            time.sleep(command_time)
+            print('complete')
+            print('\n')
+            joy_msg = Joy()
+            joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+            joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+            self.pub_joy.publish(joy_msg)
+            time.sleep(0.5)  # Waits for 2 seconds before moving to the next iteration
+
+        print('stop')
+        joy_msg = Joy()
+        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.pub_joy.publish(joy_msg)
         self.stop()
 
     # constant
