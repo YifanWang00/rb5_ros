@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 import sys
 import rospy
+import math
+
 from sensor_msgs.msg import Joy
 from key_parser import get_key, save_terminal_settings, restore_terminal_settings
 
@@ -36,6 +38,34 @@ class KeyJoyNode:
             if n <= len(lines):
                 x, y, z = map(float, lines[n-1].split(','))  # Indexing starts from 0
                 return x, y, z
+            
+    def get_target_angle(self, current, target):
+        delta_x = target[0] - current[0]
+        delta_y = target[1] - current[1]
+        return math.atan2(delta_y, delta_x)
+    
+    def decide_movement_order_with_tolerance(self, coordinates, tolerance=0.01):
+        actions = []
+        for i in range(len(coordinates) - 1):
+            current_x, current_y, current_z = coordinates[i]
+            target_x, target_y, _ = coordinates[i+1]
+            
+            z_1 = self.get_target_angle((current_x, current_y), (target_x, target_y))
+            angle_difference = z_1 - current_z
+            
+            # Normalize the difference to between -pi and pi
+            while angle_difference > math.pi:
+                angle_difference -= 2 * math.pi
+            while angle_difference < -math.pi:
+                angle_difference += 2 * math.pi
+            
+            # Check if the difference is within the acceptable values or within the tolerance
+            if abs(angle_difference) < tolerance or round(angle_difference % 3.14, 2) in [0, 3.14, 1.57, -1.57]:
+                actions.append("move")
+            else:
+                actions.append("rotate")
+                
+        return actions
 
     def run(self):
         # while True:
@@ -60,6 +90,9 @@ class KeyJoyNode:
         
         print(all_coordinates)
     
+        movement_order_with_tolerance = self.decide_movement_order_with_tolerance(all_coordinates)
+        print(movement_order_with_tolerance)
+        
         self.stop()
 
     # constant
