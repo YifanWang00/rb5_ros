@@ -199,7 +199,7 @@ class KeyJoyNode:
         print(control_commands)
 
         for i in range(5):
-            print(f"Loop iteration: {i}")
+            print(i)
             time.sleep(1)  # Waits for 2 seconds before moving to the next iteration
 
         self.stop()
