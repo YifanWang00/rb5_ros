@@ -174,7 +174,7 @@ class KeyJoyNode:
                 # Execute counter-clockwise rotation
                 print("Rotating counter-clockwise")
                 joy_msg.axes[0] = -1.0
-        command_time = command_detail[time]
+        command_time = command_detail["time"]
         return joy_msg, command_time
 
 #####
