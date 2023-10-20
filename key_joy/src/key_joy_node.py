@@ -222,8 +222,8 @@ class KeyJoyNode:
         #
 
         # Sample linear_velocity and angular_velocity
-        linear_velocity = 1.0  # m/s
-        angular_velocity = 1.0  # rad/s
+        linear_velocity = 0.2  # m/s
+        angular_velocity = 0.2  # rad/s
 
         # Generate control commands
         control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity, angular_velocity)
