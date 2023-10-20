@@ -143,10 +143,10 @@ class KeyJoyNode:
         print(angle_details)
         #
 
-        self.detailed_move_rotate_info = self.detailed_movement_information_simplified(angle_details)
+        detailed_move_rotate_info = self.detailed_movement_information_simplified(angle_details)
 
         #
-        print(angle_details)
+        print(detailed_move_rotate_info)
         #
 
         self.stop()
