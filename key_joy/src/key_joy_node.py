@@ -31,7 +31,102 @@ class KeyJoyNode:
     def __init__(self):
         self.pub_joy = rospy.Publisher("/joy", Joy, queue_size=1)
         self.settings = save_terminal_settings()
-        self.i = 0
+        # Used to debug
+        # self.i = 0
+
+    def run(self):
+
+        print("===start===\n")
+
+        # Load all the coordinates from file
+        all_coordinates = []
+
+        # Get the num of points
+        num_lines = sum(1 for line in open('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt'))
+        print("There are",num_lines, "points\n")
+
+        # Load points
+        for i in range(1, num_lines + 1):
+            x, y, z = self.read_nth_line('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt', i)
+            all_coordinates.append((x, y, z))
+            print((x, y, z))
+            print('\n')
+
+        # Do angle calulate for subsequent calculation
+        angle_details = self.determine_angle_details(all_coordinates)
+
+        # Make action decision based on the angle details
+        detailed_move_rotate_info = self.detailed_movement_information_simplified(angle_details)
+
+        # linear_velocity(linear_velocity_1 represents straight velocity while linear_velocity_2 represents slide velocity) and angular_velocity
+        linear_velocity_1 = 0.21 * 2   # m/s
+        linear_velocity_2 = 0.145 * 2   # m/s
+        angular_velocity = 1.815  # rad/s
+
+        # Generate control commands based on action decision
+        control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity_1, linear_velocity_2, angular_velocity)
+
+        # Activate the control node
+        joy_msg = Joy()
+        joy_msg.axes = [0.0 ,1.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        time.sleep(1)
+
+        # Used to debug
+        # self.i = self.i + 1
+        # print(self.i)
+        # print('\n')
+
+        # Execute
+        for cmd in control_commands:
+            # Print cmd
+            print(cmd)
+            print('\n')
+
+            joy_msg = Joy()
+            joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+            joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+            joy_msg, command_time = self.execute_command(cmd, joy_msg)
+
+            # Used to debug
+            # self.i = self.i + 1
+            # print(self.i)
+            # print('\n')
+            # print(joy_msg.axes)
+            # print('\n')
+
+            # Publish joy
+            self.pub_joy.publish(joy_msg)
+            print('Command Sent!\n')   
+            time.sleep(command_time)
+            print('Command Completed!\n')
+
+            # Used to debug
+            # self.i = self.i + 1
+            # print(self.i)
+            # print('\n')
+
+            # Stop the robot
+            joy_msg = Joy()
+            joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+            joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+            self.pub_joy.publish(joy_msg)
+
+            time.sleep(1)  # Waits for 1 seconds before moving to the next iteration
+
+        # Used to debug
+        # self.i = self.i + 1
+        # print(self.i)
+        # print('\n')
+
+        # Stop the robot
+        print('===All the commands done===')
+        joy_msg = Joy()
+        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
+        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.pub_joy.publish(joy_msg)
+
+        self.stop()
 
     #Reads the nth line from the given file path and returns the values as x, y, and z.
     def read_nth_line(self, file_path, n):
@@ -40,12 +135,6 @@ class KeyJoyNode:
             if n <= len(lines):
                 x, y, z = map(float, lines[n-1].split(','))  # Indexing starts from 0
                 return x, y, z
-######
-    def calculate_distance(self, point1, point2):
-        """
-        Calculates the Euclidean distance between two 2D points.
-        """
-        return math.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
 
     def determine_angle_details(self, points):
         """
@@ -71,6 +160,12 @@ class KeyJoyNode:
             # Append the details to the list
             angle_details.append({"point1": point1, "point2": point2, "z_target_axis": z_target_axis, "angle_difference_robot_target": angle_difference_robot_target})
         return angle_details
+
+    def calculate_distance(self, point1, point2):
+        """
+        Calculates the Euclidean distance between two 2D points.
+        """
+        return math.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
 
     def detailed_movement_information_simplified(self, angle_details):
         """
@@ -109,7 +204,6 @@ class KeyJoyNode:
                 rotation_angle_change_2 = round(rotation_angle_change_2, 2)
                 results.append(['rotate', rotation_angle_change_1, angle_difference_robot_target_1, distance, rotation_angle_change_2])
         return results
-
 
     def generate_control_commands(self, detailed_info, linear_velocity_1, linear_velocity_2, angular_velocity):
         """
@@ -180,167 +274,9 @@ class KeyJoyNode:
                 joy_msg.axes[2] = -1.0
         command_time = command_detail["time"]
         return joy_msg, command_time
-
-#####
-
-    def run(self):
-        # while True:
-        #     # parse keyboard control
-        #     key = get_key(self.settings, timeout=0.1)
-
-        #     # interpret keyboard control as joy
-        #     joy_msg, flag = self.key_to_joy(key)
-        #     if flag is False:
-        #         break
-
-        #     # publish joy
-        #     self.pub_joy.publish(joy_msg)
-        print("start")
-
-        all_coordinates = []
-
-        num_lines = sum(1 for line in open('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt'))
-        #
-        print(num_lines)
-        #
-
-        for i in range(1, num_lines + 1):
-            x, y, z = self.read_nth_line('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt', i)
-            all_coordinates.append((x, y, z))
-        
-        #
-        print(all_coordinates)
-        #
-
-        angle_details = self.determine_angle_details(all_coordinates)
-
-        #
-        print(angle_details)
-        #
-
-        detailed_move_rotate_info = self.detailed_movement_information_simplified(angle_details)
-
-        #
-        print(detailed_move_rotate_info)
-        #
-
-        # Sample linear_velocity and angular_velocity
-        linear_velocity_1 = 0.21 * 2   # m/s
-        linear_velocity_2 = 0.145 * 2   # m/s
-        angular_velocity = 1.815  # rad/s
-
-        # Generate control commands
-        control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity_1, linear_velocity_2, angular_velocity)
-
-        joy_msg = Joy()
-        joy_msg.axes = [0.0 ,1.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        self.i = self.i + 1
-        print(self.i)
-        print('\n')
-
-        time.sleep(1)
-
-        # joy_msg = Joy()
-        # joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        # joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        # self.i = self.i + 1
-        # print(self.i)
-        # print('\n')
-
-        # joy_msg = Joy()
-        # joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        # joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        # self.i = self.i + 1
-        # print(self.i)
-        # print('\n')
-
-        # joy_msg = Joy()
-        # joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        # joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        # self.i = self.i + 1
-        # print(self.i)
-        # print('\n')
-
-        # joy_msg = Joy()
-        # joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        # joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        # self.i = self.i + 1
-        # print(self.i)
-        # print('\n')
-
-        for cmd in control_commands:
-            print(cmd)
-            print('\n')
-
-            joy_msg = Joy()
-            joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-            joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-            joy_msg, command_time = self.execute_command(cmd, joy_msg)
-            print('\n')
-            # publish joy
-            self.i = self.i + 1
-            print(self.i)
-            print('\n')
-            print(joy_msg.axes)
-            self.pub_joy.publish(joy_msg)
-            print('\n')
-            print('sent')   
-            time.sleep(command_time)
-            print('complete')
-
-            print('\n')
-            joy_msg = Joy()
-            joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-            joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-            self.i = self.i + 1
-            print(self.i)
-            print('\n')
-            self.pub_joy.publish(joy_msg)
-            time.sleep(0.5)  # Waits for 2 seconds before moving to the next iteration
-
-        print('stop')
-        joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-        self.i = self.i + 1
-        print(self.i)
-        print('\n')
-        self.pub_joy.publish(joy_msg)
-        self.stop()
-
-    # constant
-    def key_to_joy(self, key):
-        flag = True
-        joy_msg = Joy()
-        joy_msg.axes = [0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0 ,0.0]
-        joy_msg.buttons = [0, 0, 0, 0, 0, 0, 0, 0]
-
-        # joy_msg.axes only change one index => carMixed unable
-        if key == 'w':
-            joy_msg.axes[1] = 1.0
-        elif key == 's':
-            joy_msg.axes[1] = -1.0
-
-        elif key == 'a':
-            joy_msg.axes[0] = -1.0
-        elif key == 'd':
-            joy_msg.axes[0] = 1.0
-
-        elif key == 'q':
-            joy_msg.axes[2] = -1.0
-        elif key == 'e':
-            joy_msg.axes[2] = 1.0
-
-        elif (len(key) > 0 and ord(key) == 27) or (key == '\x03'):
-            flag = False
-
-        return joy_msg, flag
     
-
     def stop(self):
         restore_terminal_settings(self.settings)
-
 
 if __name__ == "__main__":
     key_joy_node = KeyJoyNode()
