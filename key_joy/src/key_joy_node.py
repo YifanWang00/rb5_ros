@@ -188,21 +188,21 @@ class KeyJoyNode:
             # For 'rotate' actions
             else:
                 if angle_diff < 1.57:
-                    rotation_angle_change_1 = angle_diff
+                    rotation_before_move = angle_diff
                     angle_difference_robot_target_1 = 0
                 else:
-                    rotation_angle_change_1 = 3.14 - angle_diff
+                    rotation_before_move = 3.14 - angle_diff
                     angle_difference_robot_target_1 = 3.14
                 distance = self.calculate_distance((detail["point1"][0], detail["point1"][1]), (detail["point2"][0], detail["point2"][1]))
                 # Calculate the rotation angle required after reaching point2
-                rotation_angle_change_2 = detail["point2"][2] - (detail["point1"][2] + rotation_angle_change_1)
-                # Normalize rotation_angle_change_2 to between -pi and pi
-                while rotation_angle_change_2 > math.pi:
-                    rotation_angle_change_2 -= 2 * math.pi
-                while rotation_angle_change_2 < -math.pi:
-                    rotation_angle_change_2 += 2 * math.pi
-                rotation_angle_change_2 = round(rotation_angle_change_2, 2)
-                results.append(['rotate', rotation_angle_change_1, angle_difference_robot_target_1, distance, rotation_angle_change_2])
+                rotation_after_move = detail["point2"][2] - (detail["point1"][2] + rotation_before_move)
+                # Normalize rotation_after_move to between -pi and pi
+                while rotation_after_move > math.pi:
+                    rotation_after_move -= 2 * math.pi
+                while rotation_after_move < -math.pi:
+                    rotation_after_move += 2 * math.pi
+                rotation_after_move = round(rotation_after_move, 2)
+                results.append(['rotate', rotation_before_move, angle_difference_robot_target_1, distance, rotation_after_move])
         return results
 
     def generate_control_commands(self, detailed_info, linear_velocity_1, linear_velocity_2, angular_velocity):
@@ -229,15 +229,15 @@ class KeyJoyNode:
 
             # For 'rotate' actions
             elif action_type == 'rotate':
-                _, rotation_angle_change_1, direction, distance, rotation_angle_change_2 = action_info
+                _, rotation_before_move, direction, distance, rotation_after_move = action_info
                 # Calculate rotation times and move time
-                rotation_time_1 = abs(rotation_angle_change_1) / angular_velocity
+                rotation_time_1 = abs(rotation_before_move) / angular_velocity
                 move_time = distance / linear_velocity_1
-                rotation_time_2 = abs(rotation_angle_change_2) / angular_velocity
-                control_commands.append({"command": "rotate", "angle": rotation_angle_change_1, "time": rotation_time_1})
+                rotation_time_2 = abs(rotation_after_move) / angular_velocity
+                control_commands.append({"command": "rotate", "angle": rotation_before_move, "time": rotation_time_1})
                 control_commands.append({"command": "move", "direction": direction, "time": move_time})
                 if rotation_time_2 > 0.1:  # Only add a rotate command if there's a need to rotate after moving
-                    control_commands.append({"command": "rotate", "angle": rotation_angle_change_2, "time": rotation_time_2})
+                    control_commands.append({"command": "rotate", "angle": rotation_after_move, "time": rotation_time_2})
 
         return control_commands
 
