@@ -1,0 +1,8 @@
+prefix=/root/rb5_ws/src/rb5_ros/build/devel
+
+Name: april_detection
+Description: Description of april_detection
+Version: 0.0.0
+Cflags: -I/root/rb5_ws/src/rb5_ros/build/devel/include
+Libs: -L${prefix}/lib 
+Requires: roscpp rospy std_msgs sensor_msgs cv_bridge message_runtime

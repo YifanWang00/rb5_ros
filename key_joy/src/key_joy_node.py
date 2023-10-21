@@ -124,7 +124,7 @@ class KeyJoyNode:
             if action_type == 'move':
                 _, direction, distance, rotation_after_move = action_info
                 # Calculate move time and rotation time
-                if direction == 0 or direction == 3.14:
+                if abs(direction - 0) < 0.1 or abs(direction - 3.14) < 0.1:
                    move_time = distance / linear_velocity_1
                 else:
                     move_time = distance / linear_velocity_2
@@ -158,25 +158,25 @@ class KeyJoyNode:
                 joy_msg.axes[1] = 1.0
             elif abs(command_detail["direction"] - 3.14) <= 0.05:
                 # Execute move in the 3.14 direction
-                print("Moving in direction: 3.14")
+                print("Moving in direction: 3.14",command_detail["time"])
                 joy_msg.axes[1] = -1.0
             elif abs(command_detail["direction"] - 1.57) <= 0.05:
                 # Execute move in the 1.57 direction
-                print("Moving in direction: 1.57")
+                print("Moving in direction: 1.57",command_detail["time"])
                 joy_msg.axes[0] = -1.0
             elif abs(command_detail["direction"] + 1.57) <= 0.05:
                 # Execute move in the -1.57 direction
-                print("Moving in direction: -1.57")
+                print("Moving in direction: -1.57",command_detail["time"])
                 joy_msg.axes[0] = 1.0
 
         elif command_detail["command"] == "rotate":
             if command_detail["angle"] > 0:
                 # Execute clockwise rotation
-                print("Rotating clockwise")
+                print("Rotating clockwise",command_detail["time"])
                 joy_msg.axes[2] = 1.0
             else:
                 # Execute counter-clockwise rotation
-                print("Rotating counter-clockwise")
+                print("Rotating counter-clockwise",command_detail["time"])
                 joy_msg.axes[2] = -1.0
         command_time = command_detail["time"]
         return joy_msg, command_time
@@ -270,6 +270,7 @@ class KeyJoyNode:
         # print('\n')
 
         for cmd in control_commands:
+            print(cmd)
             print('\n')
 
             joy_msg = Joy()
