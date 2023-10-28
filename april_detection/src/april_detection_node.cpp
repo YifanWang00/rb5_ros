@@ -32,15 +32,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sensor_msgs/Image.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseArray.h"
+#include "geometry_msgs/TransformStamped.h"
 #include "april_detection/AprilTagDetection.h"
 #include "april_detection/AprilTagDetectionArray.h"
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
+#include <tf2_ros/static_transform_broadcaster.h>
 
 ros::Publisher pose_pub;
 ros::Publisher apriltag_pub;
 ros::Subscriber image_sub;
 AprilDetection det;
+bool isInitialized = false;
 
 // TODO: Replace these parameters using your calibration results
 double distortion_coeff[] = 
@@ -67,6 +70,41 @@ cv::Mat rectify(const cv::Mat image){
   
   return image_rect;
 }
+
+void initializeTagsTF(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs::Header header){
+  tf::Quaternion q;
+  tf::Matrix3x3 so3_mat;
+  tf::Transform tf;
+  tf2_ros::StaticTransformBroadcaster static_br;
+
+  for (int i = 0; i < poses.size(); i++)
+  {
+    // translation
+    tf.setOrigin(tf::Vector3(poses[i].t->data[0],
+                             poses[i].t->data[1],
+                             poses[i].t->data[2]));
+    // orientation - SO(3)
+    so3_mat.setValue(poses[i].R->data[0], poses[i].R->data[1], poses[i].R->data[2],
+                     poses[i].R->data[3], poses[i].R->data[4], poses[i].R->data[5], 
+                     poses[i].R->data[6], poses[i].R->data[7], poses[i].R->data[8]);
+
+    double roll, pitch, yaw; 
+
+    // orientation - q
+    so3_mat.getRPY(roll, pitch, yaw); // so3 to RPY
+    q.setRPY(roll, pitch, yaw);
+
+    tf.setRotation(q);
+
+    geometry_msgs::TransformStamped static_transform;
+    tf::transformTFToMsg(tf, static_transform.transform);
+    static_transform.header.stamp = ros::Time::now();
+    static_transform.header.frame_id = "world";
+    static_transform.child_frame_id = "marker_" + to_string(ids[i]);
+    static_br.sendTransform(static_transform);
+  }
+}
+
 
 void publishTransforms(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs::Header header){
   tf::Quaternion q;
@@ -120,7 +158,7 @@ void publishTransforms(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs:
     // Record 4 corners of the AprilTag id[i]
     for (int j = 0; j < 4; j++){
     	apriltag_detection.corners2d[j].x = det.info.det->p[j][0];
-	apriltag_detection.corners2d[j].y = det.info.det->p[j][1];
+	    apriltag_detection.corners2d[j].y = det.info.det->p[j][1];
     }
 
     tf::quaternionTFToMsg(q, apriltag_detection.pose.orientation);
@@ -136,6 +174,22 @@ void imageCallback(const sensor_msgs::Image::ConstPtr& msg){
   
   cv_bridge::CvImagePtr img_cv = cv_bridge::toCvCopy(msg);
   std_msgs::Header header = msg->header;
+
+  if (!isInitialized) {
+    auto initialDetectionResult = det.processImage(rectify(img_cv->image));
+    if (get<0>(initialDetectionResult).empty()) {
+      ROS_WARN("No tags detected during initialization!");
+    } 
+    else {
+      initialPoses = get<0>(initialDetectionResult);
+      initialIds = get<1>(initialDetectionResult);
+      isInitialized = true;
+      ROS_INFO("Initialization successful!");
+
+      initializeTagsTF(initialPoses, initialIds, header);
+    }
+    return; // if initalization doesn't success, wait for the next image to try again
+  }
 
   // rectify and run detection (pair<vector<apriltag_pose_t>, cv::Mat>)
   auto april_obj =  det.processImage(rectify(img_cv->image));
