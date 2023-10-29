@@ -76,6 +76,7 @@ void initializeTagsTF(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs::
   tf::Matrix3x3 so3_mat;
   tf::Transform tf;
   tf2_ros::StaticTransformBroadcaster static_br;
+  // static tf::TransformBroadcaster br;
 
   for (int i = 0; i < poses.size(); i++)
   {
@@ -100,7 +101,9 @@ void initializeTagsTF(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs::
     tf::transformTFToMsg(tf, static_transform.transform);
     static_transform.header.stamp = ros::Time::now();
     static_transform.header.frame_id = "map";
-    static_transform.child_frame_id = "marker_" + to_string(ids[i]);
+    marker_name = "marker_" + to_string(ids[i]);
+    static_transform.child_frame_id = marker_name;
+    // br.sendTransform(tf::StampedTransform(tf, ros::Time::now(), "map", marker_name));
     static_br.sendTransform(static_transform);
   }
 }

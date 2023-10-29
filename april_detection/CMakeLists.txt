@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(apriltag REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -135,6 +136,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/april_detection
   ${OpenCV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${tf2_ros_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -167,6 +169,7 @@ target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   apriltag::apriltag
   ${OpenCV_LIBRARIES}
+  ${tf2_ros_LIBRARIES}
 )
 
 #############
