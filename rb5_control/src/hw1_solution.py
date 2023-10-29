@@ -1,8 +1,18 @@
 #!/usr/bin/env python
 import sys
 import rospy
+import time
 from geometry_msgs.msg import Twist
 import numpy as np
+from rb5_message.msg import rb5_message
+
+# Global 
+pid = None
+pub_twist = None
+current_waypoint_index = 0
+waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
+current_state = np.array([0.0, 0.0, 0.0]) 
+step_num = 0
 
 """
 The class of the pid controller.
@@ -89,56 +99,100 @@ def coord(twist, current_state):
                   [0.0,0.0,1.0]])
     return np.dot(J, twist)
     
+def rb5_message_callback(data):
+    global current_state, current_waypoint_index, pub_twist, pid, waypoint, step_num
 
+    current_state = np.array(data.data)
 
-if __name__ == "__main__":
-    import time
+    step_num = step_num + 1
+    print("====",step_num,"====")
+    print("Current state:", current_state)
+    print("Target state:", np.array(waypoint[current_waypoint_index]))
+
+    target_point  = np.array(waypoint[current_waypoint_index])
+    if np.linalg.norm(pid.getError(current_state, target_point)) <= 0.05:
+        current_waypoint_index += 1
+        if current_waypoint_index >= len(waypoint):
+            pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0]))) 
+            return
+
+        pid.setTarget(target_point) 
+        print("move to way point", target_point)
+        step_num = 0
+
+    update_value = pid.update(current_state)
+    print("World speed:" ,update_value)
+    print("Car speed:",coord(update_value, current_state))
+    pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
+
+def stop_motors():
+    pub_twist.publish(genTwistMsg(np.array([0.0, 0.0, 0.0]))) 
+
+def main():
+    global pid, pub_twist, current_state
+
     rospy.init_node("hw1")
     pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
-    waypoint = np.array([[0.0,0.0,0.0], 
-                         [1.0,2.0,-np.pi/2],
-                        #  [1.0,1.0,0.0],
-                        #  [-1.0,-1.0,np.pi/2.0],
+    pid = PIDcontroller(0.02, 0.005, 0.005)
+    pid.setTarget(waypoint[0]) 
 
-                        #  [-1.0,1.0,np.pi/2.0],
-                        #  [-2.0,1.0,0.0],
-                        #  [-2.0,2.0,-np.pi/2.0],
-                        #  [-1.0,1.0,-np.pi/4.0],
-                        #  [0.0,0.0,0.0]
-                         ]) 
+    rospy.Subscriber("/rb5_state_topic", rb5_message, rb5_message_callback)
 
-    # init pid controller
-    pid = PIDcontroller(0.02,0.005,0.005)
+    rospy.on_shutdown(stop_motors)
 
-    # init current state
-    current_state = np.array([0.0,0.0,0.0])
+    rospy.spin()
+    
 
-    # in this loop we will go through each way point.
-    # once error between the current state and the current way point is small enough, 
-    # the current way point will be updated with a new point.
-    for wp in waypoint:
-        print("move to way point", wp)
-        # set wp as the target point
-        pid.setTarget(wp)
+if __name__ == "__main__":
+    main()
 
-        # calculate the current twist
-        update_value = pid.update(current_state)
-        # publish the twist
-        pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
-        #print(coord(update_value, current_state))
-        time.sleep(0.05)
-        # update the current state
-        current_state += update_value
-        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.05): # check the error between current state and current way point
-            # calculate the current twist
-            update_value = pid.update(current_state)
-            # publish the twist
-            pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
-            print(coord(update_value, current_state))
-            time.sleep(0.05)
-            # update the current state
-            current_state += update_value
-    # stop the car and exit
-    pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
+    # rospy.init_node("hw1")
+    # pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
+
+    # waypoint = np.array([[0.0,0.0,0.0], 
+    #                      [1.0,2.0,-np.pi/2],
+    #                     #  [1.0,1.0,0.0],
+    #                     #  [-1.0,-1.0,np.pi/2.0],
+
+    #                     #  [-1.0,1.0,np.pi/2.0],
+    #                     #  [-2.0,1.0,0.0],
+    #                     #  [-2.0,2.0,-np.pi/2.0],
+    #                     #  [-1.0,1.0,-np.pi/4.0],
+    #                     #  [0.0,0.0,0.0]
+    #                      ]) 
+
+    # # init pid controller
+    # pid = PIDcontroller(0.02,0.005,0.005)
+
+    # # init current state
+    # current_state = np.array([0.0,0.0,0.0])
+
+    # # in this loop we will go through each way point.
+    # # once error between the current state and the current way point is small enough, 
+    # # the current way point will be updated with a new point.
+    # for wp in waypoint:
+    #     print("move to way point", wp)
+    #     # set wp as the target point
+    #     pid.setTarget(wp)
+
+    #     # calculate the current twist
+    #     update_value = pid.update(current_state)
+    #     # publish the twist
+    #     pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
+    #     #print(coord(update_value, current_state))
+    #     time.sleep(0.05)
+    #     # update the current state
+    #     current_state += update_value
+    #     while(np.linalg.norm(pid.getError(current_state, wp)) > 0.05): # check the error between current state and current way point
+    #         # calculate the current twist
+    #         update_value = pid.update(current_state)
+    #         # publish the twist
+    #         pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
+    #         # print(coord(update_value, current_state))
+    #         time.sleep(0.05)
+    #         # update the current state
+    #         current_state += update_value
+    # # stop the car and exit
+    # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
 
