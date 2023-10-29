@@ -1,0 +1,13 @@
+<launch>
+    <!-- Broadcast the identity transform from world frame to an initial frame at robot's starting position -->
+    <node name="world_to_initial_broadcaster" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 world initial_frame 100" />
+
+    <!-- Launch the rb_camera_main_ocv launch file from rb5_vision package -->
+    <!-- <include file="$(find rb5_vision)/launch/rb_camera_main_ocv.launch"/> -->
+
+    <!-- Run apriltag_detection node -->
+    <!-- <node name="apriltag_detection_node" pkg="apriltag_detection" type="april_detection_node" /> -->
+
+    
+    <!-- ... and so on ... -->
+</launch>
