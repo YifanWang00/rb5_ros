@@ -99,7 +99,7 @@ void initializeTagsTF(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs::
     geometry_msgs::TransformStamped static_transform;
     tf::transformTFToMsg(tf, static_transform.transform);
     static_transform.header.stamp = ros::Time::now();
-    static_transform.header.frame_id = "world";
+    static_transform.header.frame_id = "map";
     static_transform.child_frame_id = "marker_" + to_string(ids[i]);
     static_br.sendTransform(static_transform);
   }
