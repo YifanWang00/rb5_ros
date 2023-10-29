@@ -28,7 +28,7 @@ if [ $? != 0 ]; then
 
   # Run source command and roslaunch command in the left pane
   tmux send-keys "source devel/setup.bash" C-m
-  tmux send-keys "sleep 1" C-m
+  tmux send-keys "sleep 2" C-m
   tmux send-keys "roslaunch rb5_vision rb_camera_main_ocv.launch" C-m
 
   # Create a new window split vertically from the original pane
@@ -40,7 +40,7 @@ if [ $? != 0 ]; then
   # Run source command and roslaunch command in the bottom pane
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 2" C-m
-  tmux send-keys "roslaunch tf static_world_tf_broadcaster.launch" C-m
+  tmux send-keys "rosrun tf static_transform_publisher 0 0 0 0 0 0 0 world initial_frame 100" C-m
 
   tmux split-window -h
   tmux select-pane -t 3
