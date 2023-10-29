@@ -28,7 +28,7 @@ if [ $? != 0 ]; then
 
   # Run source command and roslaunch command in the left pane
   tmux send-keys "source devel/setup.bash" C-m
-  tmux send-keys "sleep 2" C-m
+  tmux send-keys "sleep 5" C-m
   tmux send-keys "roslaunch rb5_vision rb_camera_main_ocv.launch" C-m
 
   # Create a new window split vertically from the original pane
@@ -45,7 +45,7 @@ if [ $? != 0 ]; then
   tmux split-window -h
   tmux select-pane -t 3
   tmux send-keys "source devel/setup.bash" C-m
-  tmux send-keys "sleep 3" C-m
+  tmux send-keys "sleep 5" C-m
   tmux send-keys "rosrun april_detection april_detection_node" C-m
 
 

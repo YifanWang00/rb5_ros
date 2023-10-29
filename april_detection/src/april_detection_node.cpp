@@ -43,6 +43,7 @@ ros::Publisher pose_pub;
 ros::Publisher apriltag_pub;
 ros::Subscriber image_sub;
 AprilDetection det;
+tf2_ros::StaticTransformBroadcaster static_br;
 bool isInitialized = false;
 
 // TODO: Replace these parameters using your calibration results
@@ -71,11 +72,11 @@ cv::Mat rectify(const cv::Mat image){
   return image_rect;
 }
 
-void initializeTagsTF(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs::Header header){
+void initializeTagsTF(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs::Header header, tf2_ros::StaticTransformBroadcaster static_br){
   tf::Quaternion q;
   tf::Matrix3x3 so3_mat;
   tf::Transform tf;
-  tf2_ros::StaticTransformBroadcaster static_br;
+  // tf2_ros::StaticTransformBroadcaster static_br;
   // static tf::TransformBroadcaster br;
 
   for (int i = 0; i < poses.size(); i++)
@@ -98,11 +99,25 @@ void initializeTagsTF(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs::
     tf.setRotation(q);
 
     geometry_msgs::TransformStamped static_transform;
-    tf::transformTFToMsg(tf, static_transform.transform);
     static_transform.header.stamp = ros::Time::now();
     static_transform.header.frame_id = "map";
-    marker_name = "marker_" + to_string(ids[i]);
-    static_transform.child_frame_id = marker_name;
+    static_transform.child_frame_id = "marker_" + to_string(ids[i]);
+    tf::transformTFToMsg(tf, static_transform.transform);
+    ROS_INFO("Broadcasting transform from [%s] to [%s]", 
+         static_transform.header.frame_id.c_str(),
+         static_transform.child_frame_id.c_str());
+
+    ROS_INFO("Translation: x: [%f], y: [%f], z: [%f]", 
+            static_transform.transform.translation.x,
+            static_transform.transform.translation.y,
+            static_transform.transform.translation.z);
+
+    ROS_INFO("Rotation: x: [%f], y: [%f], z: [%f], w: [%f]", 
+            static_transform.transform.rotation.x,
+            static_transform.transform.rotation.y,
+            static_transform.transform.rotation.z,
+            static_transform.transform.rotation.w);
+
     // br.sendTransform(tf::StampedTransform(tf, ros::Time::now(), "map", marker_name));
     static_br.sendTransform(static_transform);
   }
@@ -184,12 +199,15 @@ void imageCallback(const sensor_msgs::Image::ConstPtr& msg){
       ROS_WARN("No tags detected during initialization!");
     } 
     else {
-      initialPoses = get<0>(initialDetectionResult);
-      initialIds = get<1>(initialDetectionResult);
+      vector<apriltag_pose_t> initialPoses = get<0>(initialDetectionResult);
+      vector<int> initialIds = get<1>(initialDetectionResult);
       isInitialized = true;
       ROS_INFO("Initialization successful!");
 
-      initializeTagsTF(initialPoses, initialIds, header);
+      initializeTagsTF(initialPoses, initialIds, header, static_br);
+      sleep(2);
+      // ROS_INFO("-----sleep to re-br-----");
+      initializeTagsTF(initialPoses, initialIds, header, static_br);
     }
     return; // if initalization doesn't success, wait for the next image to try again
   }
