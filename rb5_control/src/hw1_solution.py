@@ -16,7 +16,7 @@ class PIDcontroller:
         self.I = np.array([0.0,0.0,0.0])
         self.lastError = np.array([0.0,0.0,0.0])
         self.timestep = 0.1
-        self.maximumValue = 0.1
+        self.maximumValue = 0.06
 
     def setTarget(self, targetx, targety, targetw):
         """
@@ -97,7 +97,10 @@ if __name__ == "__main__":
     pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
     waypoint = np.array([[0.0,0.0,0.0], 
-                         [0.0,1.0,0.0],
+                         [1.0,2.0,-np.pi/2],
+                        #  [1.0,1.0,0.0],
+                        #  [-1.0,-1.0,np.pi/2.0],
+
                         #  [-1.0,1.0,np.pi/2.0],
                         #  [-2.0,1.0,0.0],
                         #  [-2.0,2.0,-np.pi/2.0],
@@ -132,7 +135,7 @@ if __name__ == "__main__":
             update_value = pid.update(current_state)
             # publish the twist
             pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
-            #print(coord(update_value, current_state))
+            print(coord(update_value, current_state))
             time.sleep(0.05)
             # update the current state
             current_state += update_value
