@@ -40,7 +40,7 @@ if [ $? != 0 ]; then
   # Run source command and roslaunch command in the bottom pane
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 2" C-m
-  tmux send-keys "rosrun tf static_transform_publisher 0 0 0 0 0 0 0 world initial_frame 100" C-m
+  tmux send-keys "rosrun tf static_transform_publisher 0 0 0 0 0 0 1 map initial_frame 100" C-m
 
   tmux split-window -h
   tmux select-pane -t 3
@@ -54,6 +54,6 @@ if [ $? != 0 ]; then
 else
   echo "Tmux session 'hw2' already exists. Restarting..."
   tmux kill-ses -t hw2
-  ./hw2_initialization.sh
+  /root/rb5_ws/src/rb5_ros/hw2_initialization.sh
 fi
 
