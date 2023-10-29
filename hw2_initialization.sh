@@ -40,7 +40,14 @@ if [ $? != 0 ]; then
   # Run source command and roslaunch command in the bottom pane
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 2" C-m
+  tmux send-keys "roslaunch tf static_world_tf_broadcaster.launch" C-m
+
+  tmux split-window -h
+  tmux select-pane -t 3
+  tmux send-keys "source devel/setup.bash" C-m
+  tmux send-keys "sleep 3" C-m
   tmux send-keys "rosrun april_detection april_detection_node" C-m
+
 
   # Attach to the tmux session to interact with it
   tmux attach -t hw2
