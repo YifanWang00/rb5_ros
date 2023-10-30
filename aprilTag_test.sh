@@ -54,5 +54,5 @@ if [ $? != 0 ]; then
 else
   echo "Tmux session 'hw2' already exists. Restarting..."
   tmux kill-ses -t hw2
-  /root/rb5_ws/src/rb5_ros/hw2_initialization.sh
+  /root/rb5_ws/src/rb5_ros/aprilTag_test.sh
 fi
