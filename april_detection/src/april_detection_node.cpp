@@ -117,6 +117,7 @@ void publishTransforms(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs:
     apriltag_detection.pose.position.y = poses[i].t->data[1];
     apriltag_detection.pose.position.z = poses[i].t->data[2];
    
+    // Record 4 corners of the AprilTag id[i]
     for (int j = 0; j < 4; j++){
     	apriltag_detection.corners2d[j].x = det.info.det->p[j][0];
 	    apriltag_detection.corners2d[j].y = det.info.det->p[j][1];
