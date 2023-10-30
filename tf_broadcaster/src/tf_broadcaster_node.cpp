@@ -9,6 +9,9 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+ros::Subscriber apriltag_sub;
+ros::Publisher cam2map_pub;
+
 
 void detectionArrayCallback(april_detection::AprilTagDetectionArray detArray_msg){
     tf2_ros::TransformBroadcaster tfBroadcaster;
@@ -38,6 +41,7 @@ void detectionArrayCallback(april_detection::AprilTagDetectionArray detArray_msg
             return;
         }        
 
+        ROS_INFO("Calculating camera_to_world TF...");
         geometry_msgs::TransformStamped camera_to_world_transform;
         camera_to_world_transform.header.stamp = ros::Time::now();
         camera_to_world_transform.header.frame_id = "map";
@@ -46,12 +50,17 @@ void detectionArrayCallback(april_detection::AprilTagDetectionArray detArray_msg
         tf2::fromMsg(tag_to_world_transform.transform, tag_to_world_tf2);
         tf2::Transform camera_to_tag_tf2;
         tf2::fromMsg(camera_to_tag_transform.transform, camera_to_tag_tf2);
-        ROS_INFO("Calculating camera_to_world TF...");
-        camera_to_world_transform.transform = tf2::toMsg(
-            tag_to_world_tf2 * camera_to_tag_tf2.inverse()
-        );
+        tf2::Transform camera_to_world_tf2 = tag_to_world_tf2 * camera_to_tag_tf2.inverse();
+        camera_to_world_transform.transform = tf2::toMsg(camera_to_world_tf2);
+
+        vector<std_msgs::Float32> state_msg;
+        tf2::Vector3 camera_to_world_origin = camera_to_world_tf2.getOrigin();
+        state_msg.push_back(static_cast<float>(camera_to_world_origin.x()));
+        state_msg.push_back(static_cast<float>(camera_to_world_origin.y()));
+        state_msg.push_back(static_cast<float>(camera_to_world_origin.z()));
 
         tfBroadcaster.sendTransform(camera_to_world_transform);
+        cam2map_pub.publish(camera_to_world_origin);
     }
 }
 
@@ -61,8 +70,8 @@ int main(int argc, char *argv[]){
     ros::NodeHandle n;
     ros::NodeHandle private_nh("~");
     
-    ros::Subscriber apriltag_sub;
     apriltag_sub = n.subscribe("/apriltag_detection_array", 1, detectionArrayCallback);
+    cam2map_pub = n.advertise<std_msgs::vector>("/rb5_state_topic", 10);
     
     ros::spin();
     return 0;
