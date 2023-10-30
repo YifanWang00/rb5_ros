@@ -53,7 +53,7 @@ const cv::Mat d(cv::Size(1, 5), CV_64FC1, distortion_coeff);
 const cv::Mat K(cv::Size(3, 3), CV_64FC1, intrinsics);
 // TODO: Set tagSize for pose estimation, assuming same tag size.
 // details from: https://github.com/AprilRobotics/apriltag/wiki/AprilTag-User-Guide#pose-estimation
-const double tagSize = 0.162; // in meters
+const double tagSize = 0.12; // in meters
 
 cv::Mat rectify(const cv::Mat image){
   cv::Mat image_rect = image.clone();
@@ -119,7 +119,7 @@ void publishTransforms(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs:
    
     for (int j = 0; j < 4; j++){
     	apriltag_detection.corners2d[j].x = det.info.det->p[j][0];
-	apriltag_detection.corners2d[j].y = det.info.det->p[j][1];
+	    apriltag_detection.corners2d[j].y = det.info.det->p[j][1];
     }
 
     tf::quaternionTFToMsg(q, apriltag_detection.pose.orientation);
@@ -138,6 +138,13 @@ void imageCallback(const sensor_msgs::Image::ConstPtr& msg){
 
   // rectify and run detection (pair<vector<apriltag_pose_t>, cv::Mat>)
   auto april_obj =  det.processImage(rectify(img_cv->image));
+
+  if (get<0>(april_obj).empty()) {
+    ROS_INFO("No tags detected!");
+  } 
+  else {
+    ROS_INFO("[%d] tags detected!", get<1>(april_obj).size());
+  }
 
   publishTransforms(get<0>(april_obj), get<1>(april_obj), header);
 
