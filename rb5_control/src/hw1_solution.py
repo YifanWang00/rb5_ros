@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
         # used to active
         # publish the twist
-        pub_twist.publish(genTwistMsg())
+        pub_twist.publish(genTwistMsg(pid.update_value))
         #print(coord(update_value, current_state))
         time.sleep(0.05)
 
