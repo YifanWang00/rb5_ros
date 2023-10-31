@@ -2,6 +2,7 @@
 import sys
 import rospy
 import time
+import math
 from geometry_msgs.msg import Twist
 import numpy as np
 from rb5_message.msg import rb5_message
@@ -43,6 +44,7 @@ class PIDcontroller:
         self.I = np.array([0.0,0.0,0.0]) 
         self.lastError = np.array([0.0,0.0,0.0])
         self.target = np.array(state)
+        print("move to way point", self.target)
 
     def getError(self, currentState, targetState):
         """
@@ -65,9 +67,16 @@ class PIDcontroller:
         e = self.getError(currentState, self.target)
 
         P = self.Kp * e
-        self.I = self.I + self.Ki * e * self.timestep 
+
+        self.I += self.Ki * e
         I = self.I
+        # if math.isnan(I[0]):
+        #     I = np.array([0.0,0.0,0.0])
+
         D = self.Kd * (e - self.lastError)
+        # if math.isnan(self.D[0]):
+        #     D = np.array([0.0,0.0,0.0])
+
         result = P + I + D
 
         self.lastError = e
@@ -77,6 +86,8 @@ class PIDcontroller:
         if(resultNorm > self.maximumValue):
             result = (result / resultNorm) * self.maximumValue
             self.I = 0.0
+
+        print("World speed:" ,result)
 
         return result
 
@@ -102,28 +113,31 @@ def coord(twist, current_state):
 def rb5_message_callback(data):
     global current_state, current_waypoint_index, pub_twist, pid, waypoint, step_num
 
-    current_state = np.array(data.data)
+    current_state = np.array([round(data.data[0], 2),round(data.data[1], 2),round(data.data[2], 2)])
+
+    if math.isnan(current_state[0]):
+        print("BAD MESSAGE!")
+        return
 
     step_num = step_num + 1
     print("====",step_num,"====")
-    print("Current state:", current_state)
-    print("Target state:", np.array(waypoint[current_waypoint_index]))
+    print("Current state:", current_state, type(current_state))
+    print("Target state:", np.array(waypoint[current_waypoint_index]), type(waypoint[current_waypoint_index]))
 
     target_point  = np.array(waypoint[current_waypoint_index])
+
     if np.linalg.norm(pid.getError(current_state, target_point)) <= 0.05:
         current_waypoint_index += 1
         if current_waypoint_index >= len(waypoint):
-            pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0]))) 
+            # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0]))) 
             return
 
         pid.setTarget(target_point) 
-        print("move to way point", target_point)
         step_num = 0
 
     update_value = pid.update(current_state)
-    print("World speed:" ,update_value)
     print("Car speed:",coord(update_value, current_state))
-    pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
+    # pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
 
 def stop_motors():
     pub_twist.publish(genTwistMsg(np.array([0.0, 0.0, 0.0]))) 

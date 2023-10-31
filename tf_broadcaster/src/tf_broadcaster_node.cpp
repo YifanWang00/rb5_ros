@@ -3,6 +3,7 @@
 
 #include "tf_broadcaster.h"
 #include "geometry_msgs/TransformStamped.h"
+#include "rb5_message/rb5_message.h"
 #include "april_detection/AprilTagDetection.h"
 #include "april_detection/AprilTagDetectionArray.h"
 #include <tf2_ros/transform_listener.h>
@@ -11,6 +12,8 @@
 
 ros::Subscriber apriltag_sub;
 ros::Publisher cam2map_pub;
+rb5_message::rb5_message state_msg;
+tf2::Transform camera_to_world_tf2;
 
 
 void detectionArrayCallback(april_detection::AprilTagDetectionArray detArray_msg){
@@ -50,18 +53,28 @@ void detectionArrayCallback(april_detection::AprilTagDetectionArray detArray_msg
         tf2::fromMsg(tag_to_world_transform.transform, tag_to_world_tf2);
         tf2::Transform camera_to_tag_tf2;
         tf2::fromMsg(camera_to_tag_transform.transform, camera_to_tag_tf2);
-        tf2::Transform camera_to_world_tf2 = tag_to_world_tf2 * camera_to_tag_tf2.inverse();
+        camera_to_world_tf2 = tag_to_world_tf2 * camera_to_tag_tf2.inverse();
         camera_to_world_transform.transform = tf2::toMsg(camera_to_world_tf2);
 
-        vector<std_msgs::Float32> state_msg;
-        tf2::Vector3 camera_to_world_origin = camera_to_world_tf2.getOrigin();
-        state_msg.push_back(static_cast<float>(camera_to_world_origin.x()));
-        state_msg.push_back(static_cast<float>(camera_to_world_origin.y()));
-        state_msg.push_back(static_cast<float>(camera_to_world_origin.z()));
-
         tfBroadcaster.sendTransform(camera_to_world_transform);
-        cam2map_pub.publish(camera_to_world_origin);
     }
+}
+
+void publishCameraToMapTransform(const ros::TimerEvent&) {
+    state_msg.data[0] = static_cast<float>(camera_to_world_tf2.getOrigin().x());
+    if(std::isnan(state_msg.data[0])) {
+        return;
+    }
+    state_msg.data[1] = static_cast<float>(camera_to_world_tf2.getOrigin().y());
+    if(std::isnan(state_msg.data[1])) {
+        return;
+    }
+    state_msg.data[2] = static_cast<float>(camera_to_world_tf2.getOrigin().z());
+    if(std::isnan(state_msg.data[2])) {
+        return;
+    }
+    
+    cam2map_pub.publish(state_msg);
 }
 
 
@@ -71,7 +84,9 @@ int main(int argc, char *argv[]){
     ros::NodeHandle private_nh("~");
     
     apriltag_sub = n.subscribe("/apriltag_detection_array", 1, detectionArrayCallback);
-    cam2map_pub = n.advertise<std_msgs::vector>("/rb5_state_topic", 10);
+    cam2map_pub = n.advertise<rb5_message::rb5_message>("/rb5_state_topic", 10);
+
+    ros::Timer timer = n.createTimer(ros::Duration(0.05), publishCameraToMapTransform);
     
     ros::spin();
     return 0;

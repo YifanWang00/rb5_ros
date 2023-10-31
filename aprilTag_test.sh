@@ -22,22 +22,14 @@ if [ $? != 0 ]; then
 
   # Create a new window split horizontally
   tmux split-window -h
-
-  # Navigate to the left pane (pane numbering starts from 0)
   tmux select-pane -t 1
-
-  # Run source command and roslaunch command in the left pane
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 5" C-m
   tmux send-keys "roslaunch rb5_vision rb_camera_main_ocv.launch" C-m
 
   # Create a new window split vertically from the original pane
   tmux split-window -v
-
-  # Navigate to the bottom pane (assuming it's pane number 2)
   tmux select-pane -t 2
-
-  # Run source command and roslaunch command in the bottom pane
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 3" C-m
   tmux send-keys "rosrun tf static_transform_publisher 0 0 0 0 0 0 1 map initial_frame 100" C-m
@@ -48,18 +40,15 @@ if [ $? != 0 ]; then
   tmux send-keys "sleep 3" C-m
   tmux send-keys "rosrun tf static_transform_publisher 1 0 0 0 0 0 1 map marker_0 100" C-m
 
-  tmux select-pane -t 0
   tmux split-window -v
   tmux select-pane -t 4
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "rosrun april_detection april_detection_node" C-m
 
-  tmux select-pane -t 1
-  tmux split-window -h
+  tmux split-window -v
   tmux select-pane -t 5
   tmux send-keys "source devel/setup.bash" C-m
-  tmux send-keys "rosrun tf tf_echo map camera" C-m
-
+  tmux send-keys "rosrun tf_broadcaster tf_broadcaster_node" C-m
 
 
   # Attach to the tmux session to interact with it
