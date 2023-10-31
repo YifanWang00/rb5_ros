@@ -6,12 +6,13 @@ import time
 import math
 import numpy as np
 from geometry_msgs.msg import Twist
+from rb5_message.msg import rb5_message
 
 # Global 
 pid = None
 pub_twist = None
 current_waypoint_index = 0
-waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
+waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 2.0, np.pi], [0.0, 0.0, 0.0]]) 
 current_state = np.array([0.0, 0.0, 0.0]) 
 step_num = 0
 
@@ -38,6 +39,7 @@ class PIDcontroller:
         self.I = 0
         self.lastError = 0
         self.target = np.array(state)
+        print("move to way point", self.target)
 
     def getError(self, currentState, targetState):
         result = targetState - currentState
@@ -178,71 +180,129 @@ def local_to_global_velocity(local_velocity, global_orientation):
     global_velocity = np.dot(J, local_velocity)
     return global_velocity
 
-if __name__ == "__main__":
+def rb5_message_callback(data):
+    global current_state, current_waypoint_index, pub_twist, pid, waypoint, step_num
 
-    print("===start===\n")
+    current_state = np.array([round(data.data[0], 4),round(data.data[1], 4),round(data.data[2], 4)])
+
+    if math.isnan(current_state[0]):
+        print("BAD MESSAGE!")
+        return
+    
+    step_num = step_num + 1
+    print("====",step_num,"====")
+    print("Current state:", current_state)
+    print("Target state:", np.array(waypoint[current_waypoint_index]))
+
+    target_point  = np.array(waypoint[current_waypoint_index])
+
+    if np.linalg.norm(pid.getError(current_state, target_point)) <= 0.07:
+        current_waypoint_index += 1
+        if current_waypoint_index >= len(waypoint):
+            pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0]))) 
+            return
+
+        pid.setTarget(target_point) 
+
+        step_num = 0
+        
+    angle_details = pid.determine_angle_details(current_state)
+    # print(angle_details,'\n')
+
+    action_details = pid.detailed_movement_information(angle_details)
+    # print(action_details,'\n') 
+
+    control_command = pid.generate_control_command(action_details)
+    # print(control_command)
+
+    print("World speed:" ,local_to_global_velocity(pid.update_value, current_state[2]))
+    print("Car speed:",pid.update_value)
+    pub_twist.publish(genTwistMsg(pid.update_value))
+
+def stop_motors():
+    pub_twist.publish(genTwistMsg(np.array([0.0, 0.0, 0.0]))) 
+
+def main():
+    global pid, pub_twist, current_state
 
     rospy.init_node("hw1")
     pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
-    waypoint = np.array([
-                        [0.0,0.0,0.0], 
-                        [1.0,0.0,0.0],
-                        [1.0,2.0,np.pi],
-                        [0.0,0.0,0.0],
-                        ])         
+    pid = PIDcontroller(0.02, 0.005, 0.005)
+    pid.setTarget(waypoint[0]) 
 
-    # init pid controller
-    pid = PIDcontroller(0.02,0.005,0.005)
+    rospy.Subscriber("/rb5_state_topic", rb5_message, rb5_message_callback)
 
-    # init current state
-    current_state = np.array([0.0,0.0,0.0])
+    rospy.on_shutdown(stop_motors)
 
-    for wp in waypoint:
-        print("move to way point", wp)
-        # set wp as the target point
-        pid.setTarget(wp)
+    rospy.spin()
 
-        angle_details = pid.determine_angle_details(current_state)
-        print(angle_details,'\n')
+if __name__ == "__main__":
+    main()
 
-        action_details = pid.detailed_movement_information(angle_details)
-        print(action_details,'\n') 
+    # print("===start===\n")
 
-        control_command = pid.generate_control_command(action_details)
-        print(control_command)
+    # rospy.init_node("hw1")
+    # pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
-        # used to active
-        # publish the twist
-        pub_twist.publish(genTwistMsg(pid.update_value))
-        #print(coord(update_value, current_state))
-        time.sleep(0.05)
+    # waypoint = np.array([
+    #                     [0.0,0.0,0.0], 
+    #                     [1.0,0.0,0.0],
+    #                     [1.0,2.0,np.pi],
+    #                     [0.0,0.0,0.0],
+    #                     ])         
 
-        # update the current state
-        current_state += local_to_global_velocity(pid.update_value, current_state[2])
-        # Normalize the result to between -pi and pi
-        if current_state[2] > math.pi:
-            current_state[2] -= 2 * math.pi
-        if current_state[2] < -math.pi:
-            current_state[2] += 2 * math.pi
-        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.07): # check the error between current state and current way point
-            # calculate the current twist
-            angle_details = pid.determine_angle_details(current_state)
-            print(angle_details,'\n')
+    # # init pid controller
+    # pid = PIDcontroller(0.02,0.005,0.005)
 
-            action_details = pid.detailed_movement_information(angle_details)
-            print(action_details,'\n') 
+    # # init current state
+    # current_state = np.array([0.0,0.0,0.0])
 
-            control_command = pid.generate_control_command(action_details)
-            print(control_command)
-            # publish the twist
-            pub_twist.publish(genTwistMsg(pid.update_value))
-            #print(coord(update_value, current_state))
-            time.sleep(0.05)
-            # update the current state
-            current_state += local_to_global_velocity(pid.update_value, current_state[2])
-    # stop the car and exit
-    pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
-    print("===done===\n")
+    # for wp in waypoint:
+    #     print("move to way point", wp)
+    #     # set wp as the target point
+    #     pid.setTarget(wp)
+
+    #     angle_details = pid.determine_angle_details(current_state)
+    #     print(angle_details,'\n')
+
+    #     action_details = pid.detailed_movement_information(angle_details)
+    #     print(action_details,'\n') 
+
+    #     control_command = pid.generate_control_command(action_details)
+    #     print(control_command)
+
+    #     # used to active
+    #     # publish the twist
+    #     pub_twist.publish(genTwistMsg(pid.update_value))
+    #     #print(coord(update_value, current_state))
+    #     time.sleep(0.05)
+
+    #     # update the current state
+    #     current_state += local_to_global_velocity(pid.update_value, current_state[2])
+    #     # Normalize the result to between -pi and pi
+    #     if current_state[2] > math.pi:
+    #         current_state[2] -= 2 * math.pi
+    #     if current_state[2] < -math.pi:
+    #         current_state[2] += 2 * math.pi
+    #     while(np.linalg.norm(pid.getError(current_state, wp)) > 0.07): # check the error between current state and current way point
+    #         # calculate the current twist
+    #         angle_details = pid.determine_angle_details(current_state)
+    #         print(angle_details,'\n')
+
+    #         action_details = pid.detailed_movement_information(angle_details)
+    #         print(action_details,'\n') 
+
+    #         control_command = pid.generate_control_command(action_details)
+    #         print(control_command)
+    #         # publish the twist
+    #         pub_twist.publish(genTwistMsg(pid.update_value))
+    #         #print(coord(update_value, current_state))
+    #         time.sleep(0.05)
+    #         # update the current state
+    #         current_state += local_to_global_velocity(pid.update_value, current_state[2])
+    # # stop the car and exit
+    # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
+    # print("===done===\n")
 
     
