@@ -1,57 +1,61 @@
 #!/usr/bin/env python
-"""
-Copyright 2023, UC San Diego, Contextual Robotics Institute
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software is furnished to do so,
-subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""
 import sys
 import rospy
 import time
 import math
+import numpy as np
+from geometry_msgs.msg import Twist
 
 from sensor_msgs.msg import Joy
 from key_parser import get_key, save_terminal_settings, restore_terminal_settings
 
-class KeyJoyNode:
-    def __init__(self):
-        self.pub_joy = rospy.Publisher("/joy", Joy, queue_size=1)
-        self.settings = save_terminal_settings()
-        # Used to debug
-        # self.i = 0
+# Global 
+pid = None
+pub_twist = None
+current_waypoint_index = 0
+waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
+current_state = np.array([0.0, 0.0, 0.0]) 
+step_num = 0
 
+class KeyJoyNode:
+    def __init__(self, Kp, Ki, Kd):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.target = None
+        self.I = 0
+        self.lastError = 0
+        self.timestep = 0.1
+        self.maximumValue = 0.1
+        self.angular_tolerance = 0.05
+        self.last_action_type = "move"
+        self.update_value = np.array([0.0,0.0,0.0])
+    
+    def update(self, e):
+        P = self.Kp * e
+
+        self.I = self.I + self.Ki * e * self.timestep 
+        I = self.I
+        D = self.Kd * (e - self.lastError)
+        result = P + I + D
+
+        self.lastError = e
+
+        # scale down the twist if its norm is more than the maximum value. 
+        if(result > self.maximumValue):
+            result = self.maximumValue
+            self.I = 0.0
+
+        return result
+    
     def run(self):
 
         print("===start===\n")
 
         ###TODO: change to waypoint
         # Load all the coordinates from file
-        all_coordinates = []
-
-        # Get the num of points
-        num_lines = sum(1 for line in open('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt'))
-        print("There are",num_lines, "points\n")
-
-        # Load points
-        for i in range(1, num_lines + 1):
-            x, y, z = self.read_nth_line('/root/rb5_ws/src/rb5_ros/key_joy/src/waypoints.txt', i)
-            all_coordinates.append((x, y, z))
-            print((x, y, z))
-            print('\n')
+        all_coordinates = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]])
 
         # Do angle calulate for subsequent calculation
         angle_details = self.determine_angle_details(all_coordinates)
@@ -61,9 +65,9 @@ class KeyJoyNode:
 
         ###TODO: no more need this 
         # linear_velocity(linear_velocity_1 represents straight velocity while linear_velocity_2 represents slide velocity) and angular_velocity
-        linear_velocity_1 = 0.21 * 2   # m/s
-        linear_velocity_2 = 0.145 * 2   # m/s
-        angular_velocity = 1.815  # rad/s
+        # linear_velocity_1 = 0.21 * 2   # m/s
+        # linear_velocity_2 = 0.145 * 2   # m/s
+        # angular_velocity = 1.815  # rad/s
 
         ###TODO:
         # Generate control commands based on action decision
@@ -183,39 +187,27 @@ class KeyJoyNode:
             # Check if the rounded angle difference is close to any of the four angles for 'move' actions
             ###TODO: change to only forward and backward, need to focus on tolerance
             ###TODO: no more need 1.57 and -1.57
-            if any(abs(angle_diff - val) <= 0.05 for val in [0, 3.14, 1.57, -1.57]):
+            if abs(angle_diff - 0) <= self.angular_tolerance:
                 distance = self.calculate_distance((detail["point1"][0], detail["point1"][1]), (detail["point2"][0], detail["point2"][1]))
-                rotation_after_move = detail["point2"][2] - detail["point1"][2]
-                while rotation_after_move > math.pi:
-                    rotation_after_move -= 2 * math.pi
-                while rotation_after_move < -math.pi:
-                    rotation_after_move += 2 * math.pi
-                rotation_after_move = round(rotation_after_move, 2)
+            elif abs(angle_diff - math.pi) <= self.angular_tolerance or abs(angle_diff + math.pi) <= self.angular_tolerance:
+                distance = -self.calculate_distance((detail["point1"][0], detail["point1"][1]), (detail["point2"][0], detail["point2"][1]))
                 ###TODO: distance used to input into pid control, no more need rotation_after_move
-                results.append(['move', angle_diff, distance, rotation_after_move])
+                results.append(['move', distance])
             # For 'rotate' actions
             else:
-                if angle_diff < 1.57:
+                ###TODO: notice!!!
+                if -math.pi/2 < angle_diff or angle_diff < math.pi/2:
                     rotation_before_move = angle_diff
-                    angle_difference_robot_target_1 = 0
+                elif angle_diff > 0:
+                    rotation_before_move = angle_diff - math.pi
                 else:
-                    rotation_before_move = 3.14 - angle_diff
-                    angle_difference_robot_target_1 = 3.14
-                distance = self.calculate_distance((detail["point1"][0], detail["point1"][1]), (detail["point2"][0], detail["point2"][1]))
-                # Calculate the rotation angle required after reaching point2
-                rotation_after_move = detail["point2"][2] - (detail["point1"][2] + rotation_before_move)
-                # Normalize rotation_after_move to between -pi and pi
-                while rotation_after_move > math.pi:
-                    rotation_after_move -= 2 * math.pi
-                while rotation_after_move < -math.pi:
-                    rotation_after_move += 2 * math.pi
-                rotation_after_move = round(rotation_after_move, 2)
+                    rotation_before_move = angle_diff + math.pi
                 ###TODO: distance used to input into pid control, no more need rotation_after_move and distance
-                results.append(['rotate', rotation_before_move, angle_difference_robot_target_1, distance, rotation_after_move])
+                results.append(['rotate', rotation_before_move])
         return results
 
     ###TODO: need to output right/left/forward/backward
-    def generate_control_commands(self, detailed_info, linear_velocity_1, linear_velocity_2, angular_velocity):
+    def generate_control_commands(self, detailed_info):
         """
         Converts the detailed movement information into specific control commands and required times.
         """
@@ -224,75 +216,32 @@ class KeyJoyNode:
         for action_info in detailed_info:
             action_type = action_info[0]
 
+            # check whether the action type change
+            if self.last_action_type != action_type:
+                self.I = 0
+                self.lastError = 0
+
             # For 'move' actions
             if action_type == 'move':
-                _, direction, distance, rotation_after_move = action_info
+                _, distance = action_info
                 ###TODO: need to add pid control to calculate the x_speed
-                # Calculate move time and rotation time
-                if abs(direction - 0) < 0.1 or abs(direction - 3.14) < 0.1:
-                   move_time = distance / linear_velocity_1
-                else:
-                    move_time = distance / linear_velocity_2
+                # Calculate the speed
+                v_x = self.update(distance)
+                self.update_value = np.array([v_x,0.0,0.0])
                 ###TODO: no more need to calculate the rotation time
-                rotation_time = abs(rotation_after_move) / angular_velocity
-                control_commands.append({"command": "move", "direction": direction, "time": move_time})
-                ###TODO: no more need this
-                if rotation_time > 0.1:  # Only add a rotate command if there's a need to rotate after moving
-                    control_commands.append({"command": "rotate", "angle": rotation_after_move, "time": rotation_time})
+                control_commands.append({"command": "move", "rb5_speed": self.update_value})
 
             # For 'rotate' actions
             elif action_type == 'rotate':
-                _, rotation_before_move, direction, distance, rotation_after_move = action_info
+                _, rotation_before_move = action_info
                 # Calculate rotation times and move time
                 ###TODO: need to add pid control to calculate the z_speed
-                rotation_time_1 = abs(rotation_before_move) / angular_velocity
+                v_z = self.update(rotation_before_move)
+                self.update_value = np.array([0,0.0,v_z])
                 ###TODO: no more need
-                move_time = distance / linear_velocity_1
-                rotation_time_2 = abs(rotation_after_move) / angular_velocity
-                control_commands.append({"command": "rotate", "angle": rotation_before_move, "time": rotation_time_1})
-                control_commands.append({"command": "move", "direction": direction, "time": move_time})
-                if rotation_time_2 > 0.1:  # Only add a rotate command if there's a need to rotate after moving
-                    control_commands.append({"command": "rotate", "angle": rotation_after_move, "time": rotation_time_2})
+                control_commands.append({"command": "rotate","rb5_speed": self.update_value})
 
         return control_commands
-
-    ###TODO: change all!
-    def execute_command(self,command_detail, joy_msg):
-        """
-        Executes the given command based on the details provided.
-        """
-        if command_detail["command"] == "move":
-            if abs(command_detail["direction"] - 0) <= 0.05:
-                # Execute move in the 0 direction
-                print("Moving in direction: 0, time:",command_detail["time"])
-                joy_msg.axes[1] = 1.0
-            elif abs(command_detail["direction"] - 3.14) <= 0.05:
-                # Execute move in the 3.14 direction
-                print("Moving in direction: 3.14",command_detail["time"])
-                joy_msg.axes[1] = -1.0
-            elif abs(command_detail["direction"] - 1.57) <= 0.05:
-                # Execute move in the 1.57 direction
-                print("Moving in direction: 1.57",command_detail["time"])
-                joy_msg.axes[0] = -1.0
-            elif abs(command_detail["direction"] + 1.57) <= 0.05:
-                # Execute move in the -1.57 direction
-                print("Moving in direction: -1.57",command_detail["time"])
-                joy_msg.axes[0] = 1.0
-
-        elif command_detail["command"] == "rotate":
-            if command_detail["angle"] > 0:
-                # Execute clockwise rotation
-                print("Rotating clockwise",command_detail["time"])
-                joy_msg.axes[2] = 1.0
-            else:
-                # Execute counter-clockwise rotation
-                print("Rotating counter-clockwise",command_detail["time"])
-                joy_msg.axes[2] = -1.0
-        command_time = command_detail["time"]
-        return joy_msg, command_time
-    
-    def stop(self):
-        restore_terminal_settings(self.settings)
 
 if __name__ == "__main__":
     key_joy_node = KeyJoyNode()
