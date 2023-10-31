@@ -35,8 +35,8 @@ class PIDcontroller:
         """
         set the target pose.
         """
-        self.I = np.array([0.0,0.0,0.0]) 
-        self.lastError = np.array([0.0,0.0,0.0])
+        self.I = 0
+        self.lastError = 0
         self.target = np.array(state)
 
     def update(self, e):
