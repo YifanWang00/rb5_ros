@@ -24,8 +24,7 @@ if [ $? != 0 ]; then
   tmux split-window -h
   tmux select-pane -t 1
   tmux send-keys "source devel/setup.bash" C-m
-  tmux send-keys "sleep 5" C-m
-  tmux send-keys "roslaunch rb5_vision rb_camera_main_ocv.launch" C-m
+  tmux send-keys "rosrun tf_broadcaster tf_broadcaster_node" C-m
 
   # Create a new window split vertically from the original pane
   tmux split-window -v
@@ -43,12 +42,14 @@ if [ $? != 0 ]; then
   tmux split-window -v
   tmux select-pane -t 4
   tmux send-keys "source devel/setup.bash" C-m
-  tmux send-keys "rosrun tf_broadcaster tf_broadcaster_node" C-m
+  tmux send-keys "sleep 3" C-m
+  tmux send-keys "roslaunch rb5_vision rb_camera_main_ocv.launch" C-m
 
-  # tmux split-window -v
-  # tmux select-pane -t 5
-  # tmux send-keys "source devel/setup.bash" C-m
-  # tmux send-keys "rosrun tf_broadcaster tf_broadcaster_node" C-m
+  tmux select-pane -t 0
+  tmux split-window -v
+  tmux select-pane -t 5
+  tmux send-keys "source devel/setup.bash" C-m
+  tmux send-keys "rviz" C-m
 
 
   # Attach to the tmux session to interact with it
