@@ -39,6 +39,11 @@ class PIDcontroller:
         self.lastError = 0
         self.target = np.array(state)
 
+    def getError(self, currentState, targetState):
+        result = targetState - currentState
+        result[2] = (result[2] + np.pi) % (2 * np.pi) - np.pi
+        return result
+
     def update(self, e):
         P = self.Kp * e
 
@@ -92,17 +97,17 @@ class PIDcontroller:
         # Check if the rounded angle difference is close to any of the four angles for 'move' actions
         ###TODO: change to only forward and backward, need to focus on tolerance
         ###TODO: no more need 1.57 and -1.57
-        if abs(angle_diff - 0) <= self.angular_tolerance:
-            distance = self.calculate_distance((angle_details["current_state"][0], angle_details["current_state"][1]), (angle_details["target"][0], angle_details["target"][1]))
+        distance = self.calculate_distance((angle_details["current_state"][0], angle_details["current_state"][1]), (angle_details["target"][0], angle_details["target"][1]))
+        
+        if (abs(angle_diff - 0) <= self.angular_tolerance) and distance > 0.05:
             result = ['move', distance]
             return result
-        elif abs(angle_diff - math.pi) <= self.angular_tolerance or abs(angle_diff + math.pi) <= self.angular_tolerance:
-            distance = -self.calculate_distance((angle_details["current_state"][0], angle_details["current_state"][1]), (angle_details["target"][0], angle_details["target"][1]))
+        elif (abs(angle_diff - math.pi) <= self.angular_tolerance or abs(angle_diff + math.pi) <= self.angular_tolerance) and distance > 0.05:
             ###TODO: distance used to input into pid control, no more need rotation_after_move
-            result = ['move', distance]
+            result = ['move', -distance]
             return result
         # For 'rotate' actions
-        else:
+        elif distance > 0.05:
             ###TODO: notice!!!
             if -math.pi/2 < angle_diff or angle_diff < math.pi/2:
                 rotation_before_move = angle_diff
@@ -111,6 +116,10 @@ class PIDcontroller:
             else:
                 rotation_before_move = angle_diff + math.pi
             ###TODO: distance used to input into pid control, no more need rotation_after_move and distance
+            result = ['rotate', rotation_before_move]
+            return result
+        else:
+            rotation_before_move = angle_details["target"][2] - angle_details["current_state"][2]
             result = ['rotate', rotation_before_move]
             return result
 
@@ -159,6 +168,16 @@ def genTwistMsg(desired_twist):
     twist_msg.angular.z = desired_twist[2]
     return twist_msg
 
+def local_to_global_velocity(local_velocity, global_orientation):
+    # Create a rotation matrix based on the global orientation
+    J = np.array([[np.cos(global_orientation), -np.sin(global_orientation), 0.0],
+                  [np.sin(global_orientation), np.cos(global_orientation), 0.0],
+                  [0.0, 0.0, 1.0]])
+
+    # Convert the local velocity to global velocity
+    global_velocity = np.dot(J, local_velocity)
+    return global_velocity
+
 if __name__ == "__main__":
 
     print("===start===\n")
@@ -200,8 +219,13 @@ if __name__ == "__main__":
         time.sleep(0.05)
 
         # update the current state
-        current_state += pid.update_value
-        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.05): # check the error between current state and current way point
+        current_state += local_to_global_velocity(pid.update_value, current_state[2])
+        # Normalize the result to between -pi and pi
+        if current_state[2] > math.pi:
+            current_state[2] -= 2 * math.pi
+        if current_state[2] < -math.pi:
+            current_state[2] += 2 * math.pi
+        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.07): # check the error between current state and current way point
             # calculate the current twist
             angle_details = pid.determine_angle_details(current_state)
             print(angle_details,'\n')
@@ -216,7 +240,7 @@ if __name__ == "__main__":
             #print(coord(update_value, current_state))
             time.sleep(0.05)
             # update the current state
-            current_state += pid.update_value
+            current_state += local_to_global_velocity(pid.update_value, current_state[2])
     # stop the car and exit
     pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===\n")
