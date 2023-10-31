@@ -18,6 +18,7 @@ tf2::Transform map_to_cam_tf2;
 
 void detectionArrayCallback(april_detection::AprilTagDetectionArray detArray_msg){
     tf2_ros::TransformBroadcaster tfBroadcaster;
+    // tf2_ros::TransformBroadcaster tfBroadcaster2;
     
     for (const auto& detection : detArray_msg.detections) {
         int marker_id = detection.id;
@@ -55,38 +56,56 @@ void detectionArrayCallback(april_detection::AprilTagDetectionArray detArray_msg
         geometry_msgs::TransformStamped map_to_cam_transform;
         map_to_cam_transform.header.stamp = ros::Time::now();
         map_to_cam_transform.header.frame_id = "map";
-        map_to_cam_transform.child_frame_id = "robot";
+        map_to_cam_transform.child_frame_id = "robot0";
+        // TODO: Correct the transform axis
+	    // geometry_msgs::TransformStamped map_to_robot_transform;
+	    // map_to_robot_transform.header.stamp = ros::Time::now();
+        // map_to_robot_transform.header.frame_id = "map";
+        // map_to_robot_transform.child_frame_id = "robot";
+
         tf2::Transform map_to_tag_tf2;
         tf2::fromMsg(map_to_tag_msg.transform, map_to_tag_tf2);
         tf2::Transform tag_to_cam_tf2;
         tf2::Transform tag_to_cam_tf2_corrected;
         tf2::fromMsg(tag_to_cam_msg.transform, tag_to_cam_tf2);
         tag_to_cam_tf2_corrected = rotation_transform * tag_to_cam_tf2;
-        map_to_cam_tf2 = map_to_tag_tf2 * tag_to_cam_tf2;
-        // map_to_cam_tf2 = map_to_tag_tf2 * tag_to_cam_tf2_corrected;
-        map_to_cam_transform.transform = tf2::toMsg(map_to_cam_tf2);
+        map_to_cam_tf2 = map_to_tag_tf2 * tag_to_cam_tf2_corrected;
 
+        map_to_cam_transform.transform = tf2::toMsg(map_to_cam_tf2);
         tfBroadcaster.sendTransform(map_to_cam_transform);
+
+	    // tf2::Transform map_to_robot_tf2;
+	    // map_to_robot_tf2.setOrigin(
+        //     tf2::Vector3(
+        //         map_to_cam_tf2.getOrigin().x(),
+        //         map_to_cam_tf2.getOrigin().z(),
+        //         map_to_cam_tf2.getOrigin().y()
+        //     )
+        // );
+	    // map_to_robot_transform.transform = tf2::toMsg(map_to_robot_tf2);
+        // tfBroadcaster2.sendTransform(map_to_robot_transform);
     }
 }
 
 void publishCameraToMapTransform(const ros::TimerEvent&) {
     /*
     As robot tf is rotated, the correspondence between robot tf and real world robot is:
-    robot tf: (x, y, z) ===> real-world robot: (-z, y, -x)
+    robot tf: (x, y, z) ===> real-world robot: (x, z, y)
     */
-    ROS_INFO("111111");
-    // state_msg.data[0] = static_cast<float>(-map_to_cam_tf2.getOrigin().z());
     state_msg.data[0] = static_cast<float>(map_to_cam_tf2.getOrigin().x());
     if(std::isnan(state_msg.data[0])) {
         return;
     }
-    state_msg.data[1] = static_cast<float>(map_to_cam_tf2.getOrigin().y());
+    state_msg.data[1] = static_cast<float>(map_to_cam_tf2.getOrigin().z());
     if(std::isnan(state_msg.data[1])) {
         return;
     }
-    // state_msg.data[2] = static_cast<float>(-map_to_cam_tf2.getOrigin().x());
-    state_msg.data[2] = static_cast<float>(-map_to_cam_tf2.getOrigin().z());
+    tf2::Quaternion map_to_cam_quater = map_to_cam_tf2.getRotation();
+    tf2::Matrix3x3 mat(map_to_cam_quater);
+    double roll, pitch, yaw;
+    mat.getRPY(roll, pitch, yaw);
+    state_msg.data[2] = static_cast<float>(yaw);
+    ROS_INFO("roll, pitch, yaw: %f, %f, %f", roll, pitch, yaw);
     if(std::isnan(state_msg.data[2])) {
         return;
     }
