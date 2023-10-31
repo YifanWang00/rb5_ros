@@ -7,8 +7,6 @@ import math
 import numpy as np
 from geometry_msgs.msg import Twist
 
-from key_parser import get_key, save_terminal_settings, restore_terminal_settings
-
 # Global 
 pid = None
 pub_twist = None
@@ -221,5 +219,6 @@ if __name__ == "__main__":
             current_state += pid.update_value
     # stop the car and exit
     pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
+    print("===done===\n")
 
     
