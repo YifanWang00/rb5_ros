@@ -38,6 +38,7 @@ class KeyJoyNode:
 
         print("===start===\n")
 
+        ###TODO: change to waypoint
         # Load all the coordinates from file
         all_coordinates = []
 
@@ -58,11 +59,13 @@ class KeyJoyNode:
         # Make action decision based on the angle details
         detailed_move_rotate_info = self.detailed_movement_information_simplified(angle_details)
 
+        ###TODO: no more need this 
         # linear_velocity(linear_velocity_1 represents straight velocity while linear_velocity_2 represents slide velocity) and angular_velocity
         linear_velocity_1 = 0.21 * 2   # m/s
         linear_velocity_2 = 0.145 * 2   # m/s
         angular_velocity = 1.815  # rad/s
 
+        ###TODO:
         # Generate control commands based on action decision
         control_commands = self.generate_control_commands(detailed_move_rotate_info, linear_velocity_1, linear_velocity_2, angular_velocity)
 
@@ -136,6 +139,7 @@ class KeyJoyNode:
                 x, y, z = map(float, lines[n-1].split(','))  # Indexing starts from 0
                 return x, y, z
 
+    ###TODO: change points to point_1(state) and point_2(targrt)
     def determine_angle_details(self, points):
         """
         Determines the target angle and the angle difference for the robot for each pair of points.
@@ -167,6 +171,7 @@ class KeyJoyNode:
         """
         return math.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
 
+    ###TODO: change to only one action
     def detailed_movement_information_simplified(self, angle_details):
         """
         Provides detailed movement information for both 'rotate' and 'move' actions, with simplified calculations.
@@ -176,6 +181,8 @@ class KeyJoyNode:
         for detail in angle_details:
             angle_diff = round(detail["angle_difference_robot_target"], 2)
             # Check if the rounded angle difference is close to any of the four angles for 'move' actions
+            ###TODO: change to only forward and backward, need to focus on tolerance
+            ###TODO: no more need 1.57 and -1.57
             if any(abs(angle_diff - val) <= 0.05 for val in [0, 3.14, 1.57, -1.57]):
                 distance = self.calculate_distance((detail["point1"][0], detail["point1"][1]), (detail["point2"][0], detail["point2"][1]))
                 rotation_after_move = detail["point2"][2] - detail["point1"][2]
@@ -184,6 +191,7 @@ class KeyJoyNode:
                 while rotation_after_move < -math.pi:
                     rotation_after_move += 2 * math.pi
                 rotation_after_move = round(rotation_after_move, 2)
+                ###TODO: distance used to input into pid control, no more need rotation_after_move
                 results.append(['move', angle_diff, distance, rotation_after_move])
             # For 'rotate' actions
             else:
@@ -202,9 +210,11 @@ class KeyJoyNode:
                 while rotation_after_move < -math.pi:
                     rotation_after_move += 2 * math.pi
                 rotation_after_move = round(rotation_after_move, 2)
+                ###TODO: distance used to input into pid control, no more need rotation_after_move and distance
                 results.append(['rotate', rotation_before_move, angle_difference_robot_target_1, distance, rotation_after_move])
         return results
 
+    ###TODO: need to output right/left/forward/backward
     def generate_control_commands(self, detailed_info, linear_velocity_1, linear_velocity_2, angular_velocity):
         """
         Converts the detailed movement information into specific control commands and required times.
@@ -217,13 +227,16 @@ class KeyJoyNode:
             # For 'move' actions
             if action_type == 'move':
                 _, direction, distance, rotation_after_move = action_info
+                ###TODO: need to add pid control to calculate the x_speed
                 # Calculate move time and rotation time
                 if abs(direction - 0) < 0.1 or abs(direction - 3.14) < 0.1:
                    move_time = distance / linear_velocity_1
                 else:
                     move_time = distance / linear_velocity_2
+                ###TODO: no more need to calculate the rotation time
                 rotation_time = abs(rotation_after_move) / angular_velocity
                 control_commands.append({"command": "move", "direction": direction, "time": move_time})
+                ###TODO: no more need this
                 if rotation_time > 0.1:  # Only add a rotate command if there's a need to rotate after moving
                     control_commands.append({"command": "rotate", "angle": rotation_after_move, "time": rotation_time})
 
@@ -231,7 +244,9 @@ class KeyJoyNode:
             elif action_type == 'rotate':
                 _, rotation_before_move, direction, distance, rotation_after_move = action_info
                 # Calculate rotation times and move time
+                ###TODO: need to add pid control to calculate the z_speed
                 rotation_time_1 = abs(rotation_before_move) / angular_velocity
+                ###TODO: no more need
                 move_time = distance / linear_velocity_1
                 rotation_time_2 = abs(rotation_after_move) / angular_velocity
                 control_commands.append({"command": "rotate", "angle": rotation_before_move, "time": rotation_time_1})
@@ -241,6 +256,7 @@ class KeyJoyNode:
 
         return control_commands
 
+    ###TODO: change all!
     def execute_command(self,command_detail, joy_msg):
         """
         Executes the given command based on the details provided.
