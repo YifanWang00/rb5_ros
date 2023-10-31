@@ -25,39 +25,51 @@ class MegaPiControllerNode:
             yx
         """
 
-        ###1:
-        # self.calibration_x = 70.0
+        ###point 1 (1, 0, 0):
+        # self.calibration_x = -5.0
         # self.calibration_y = -90.0
         # self.calibration_z = 190.0 #0.031-0.022 pi/2
+
         # self.calibration_z = 120.0 #0.063-0.041 pi
 
-        ###2:
-        # self.calibration_x = 90.0
-        # self.calibration_y = -90.0
-        # self.calibration_z = 80.0 #0.031-0.022 pi/2 0.063-0.041 pi
-
-        ##3:
-        # self.calibration_x = 90.0
-        # self.calibration_y = -90.0
-        # self.calibration_z = 80.0 #0.063-0.041 pi y_up z_down based on y = 2, pi = pi 
-
-        ##4:
-        # self.calibration_x = 70.0 #0.2-0.13
-        # self.calibration_y = -40.0 #0.04-0.027
-        # self.calibration_z = 80.0 #based on y = -2 x = -1 
-
-        #5:
-        self.calibration_x = 70.0 #0.014-0.009
-        self.calibration_y = -40.0 #0.031-0.016
-        self.calibration_z = 80.0 #0.48-0.26 ----- differ from +++++
-
+        ###point 2 (1, 2, pi):
         # self.calibration_x = 70.0
-        # self.calibration_x = 100.0
-        # self.calibration_y = -100.0
-        # self.calibration_z = 180d.0
-        # self.calibration_z = 100.0
+        # self.calibration_y = -170.0
+        # self.calibration_z = 95.0 #0.063-0.041 pi y_up z_down based on y = 2, pi = pi 
+
+        # self.calibration_x = 80.0 #0.2-0.13
+        # self.calibration_y = -150.0 #0.04-0.027
+        # self.calibration_z = 85.0 #based on y = -2 x = -1 
+
+        ###point 0 (0, 0, 0):
+        # self.calibration_x = 100.0 #0.2-0.13
+        # self.calibration_y = -130.0 #0.04-0.027
+        # self.calibration_z = 90.0 #based on y = -2 x = -1 
+
+        # default:
+        self.calibration_x = 50.0 
+        self.calibration_y = -50.0 
+        self.calibration_z = 50.0 
 
     def twist_callback(self, twist_cmd):
+        # if(
+        #     (abs(twist_cmd.linear.x - 0.014) + abs(twist_cmd.linear.y - 0.032) + abs(twist_cmd.angular.z + 0.049)) < 0.01\
+        #     and (abs(self.calibration_x - 100.0) + abs(self.calibration_y + 130.0) + abs(self.calibration_z - 90.0)) > 1
+        #    ):
+        #     self.calibration_x = 90.0 
+        #     self.calibration_y = -120.0
+        #     self.calibration_z = 90.0 
+        # elif(
+        #     (abs(twist_cmd.linear.x - 0.020) + abs(twist_cmd.linear.y - 0.0) + abs(twist_cmd.angular.z + 0.0)) < 0.01
+        #     ):
+        #     self.calibration_x = 87.0 
+        # elif(
+        #     (abs(twist_cmd.linear.x + 0.016) + abs(twist_cmd.linear.y - 0.032) + abs(twist_cmd.angular.z + 0.051)) < 0.01\
+        #     and (abs(self.calibration_x - 70) + abs(self.calibration_y + 170.0) + abs(self.calibration_z - 95.0)) > 1       
+        #     ):
+        #     self.calibration_x = 80.0
+        #     self.calibration_y = -150.0 
+        #     self.calibration_z = 85.0 #0.063-0.041 pi y_up z_down based on y = 2, pi = pi 
         desired_twist = np.array([[self.calibration_x * twist_cmd.linear.x], [self.calibration_y * twist_cmd.linear.y], [self.calibration_z * twist_cmd.angular.z]])
         # calculate the jacobian matrix
         jacobian_matrix = np.array([[1, -1, -(self.lx + self.ly)],
