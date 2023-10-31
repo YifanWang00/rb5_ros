@@ -32,23 +32,23 @@ if [ $? != 0 ]; then
   tmux select-pane -t 2
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 3" C-m
-  tmux send-keys "rosrun tf static_transform_publisher 0 0 0 0 0 0 1 map initial_frame 100" C-m
+  tmux send-keys "rosrun tf static_transform_publisher 1 0 0 0 0 0 1 map marker_0 100" C-m
 
   tmux split-window -v
   tmux select-pane -t 3
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 3" C-m
-  tmux send-keys "rosrun tf static_transform_publisher 1 0 0 0 0 0 1 map marker_0 100" C-m
+  tmux send-keys "rosrun april_detection april_detection_node" C-m
 
   tmux split-window -v
   tmux select-pane -t 4
   tmux send-keys "source devel/setup.bash" C-m
-  tmux send-keys "rosrun april_detection april_detection_node" C-m
-
-  tmux split-window -v
-  tmux select-pane -t 5
-  tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "rosrun tf_broadcaster tf_broadcaster_node" C-m
+
+  # tmux split-window -v
+  # tmux select-pane -t 5
+  # tmux send-keys "source devel/setup.bash" C-m
+  # tmux send-keys "rosrun tf_broadcaster tf_broadcaster_node" C-m
 
 
   # Attach to the tmux session to interact with it
