@@ -11,7 +11,7 @@ from geometry_msgs.msg import Twist
 pid = None
 pub_twist = None
 current_waypoint_index = 0
-waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
+# waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
 current_state = np.array([0.0, 0.0, 0.0]) 
 step_num = 0
 
@@ -27,7 +27,7 @@ class PIDcontroller:
         self.timestep = 0.1
 
         self.maximumValue = 0.1
-        self.angular_tolerance = 0.05
+        self.angular_tolerance = 0.2
         self.last_action_type = "move"
         self.update_value = np.array([0.0,0.0,0.0])
 
@@ -44,7 +44,7 @@ class PIDcontroller:
         result[2] = (result[2] + np.pi) % (2 * np.pi) - np.pi
         return result
 
-    def update(self, e):
+    def update_x(self, e):
         P = self.Kp * e
 
         self.I = self.I + self.Ki * e * self.timestep 
@@ -54,12 +54,36 @@ class PIDcontroller:
 
         self.lastError = e
 
-        # scale down the twist if its norm is more than the maximum value. 
-        if(result > self.maximumValue):
-            result = self.maximumValue
-            self.I = 0.0
+        if(result!=0):
+            # scale down the twist if its norm is more than the maximum value. 
+            flag = result / abs(result)
+            if(result > self.maximumValue):
+                result = self.maximumValue * flag
+                self.I = 0.0
 
+            result = 0.01 * flag
         return result
+    
+    def update_y(self, e):
+        P = self.Kp * e
+
+        self.I = self.I + self.Ki * e * self.timestep 
+        I = self.I
+        D = self.Kd * (e - self.lastError)
+        result = 2 * (P + I + D)
+
+        self.lastError = e
+
+        if(result!=0):
+            flag = result / abs(result)
+            # scale down the twist if its norm is more than the maximum value. 
+            if(result > self.maximumValue):
+                result = self.maximumValue * flag
+                self.I = 0.0
+
+            result = 0.02 * flag
+        return result
+    
 
     ###TODO: change points to point_1(state) and point_2(targrt)
     def determine_angle_details(self, current_state):
@@ -132,26 +156,29 @@ class PIDcontroller:
         if self.last_action_type != action_type:
             self.I = 0
             self.lastError = 0
+            print("===Reset===")
 
         # For 'move' actions
         if action_type == 'move':
             distance = detailed_info[1]
             ###TODO: need to add pid control to calculate the x_speed
             # Calculate the speed
-            v_x = self.update(distance)
+            v_x = self.update_x(distance)
             self.update_value = np.array([v_x, 0.0, 0.0])
             ###TODO: no more need to calculate the rotation time
             control_command = {"command": "move", "rb5_speed": self.update_value}
+            self.last_action_type = 'move'
 
         # For 'rotate' actions
         elif action_type == 'rotate':
             rotation_before_move = detailed_info[1]
             # Calculate rotation times and move time
             ###TODO: need to add pid control to calculate the z_speed
-            v_z = self.update(rotation_before_move)
+            v_z = self.update_y(rotation_before_move)
             self.update_value = np.array([0.0, 0.0, v_z])
             ###TODO: no more need
             control_command = {"command": "rotate","rb5_speed": self.update_value}
+            self.last_action_type = 'rotate'
 
         return control_command
 
@@ -204,10 +231,10 @@ if __name__ == "__main__":
         pid.setTarget(wp)
 
         angle_details = pid.determine_angle_details(current_state)
-        print(angle_details,'\n')
+        # print(angle_details,'\n')
 
         action_details = pid.detailed_movement_information(angle_details)
-        print(action_details,'\n') 
+        # print(action_details,'\n') 
 
         control_command = pid.generate_control_command(action_details)
         print(control_command)
@@ -216,33 +243,41 @@ if __name__ == "__main__":
         # publish the twist
         pub_twist.publish(genTwistMsg(pid.update_value))
         #print(coord(update_value, current_state))
-        time.sleep(0.05)
+        time.sleep(0.5)
 
         # update the current state
-        current_state += local_to_global_velocity(pid.update_value, current_state[2])
+        current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 2
         # Normalize the result to between -pi and pi
         if current_state[2] > math.pi:
             current_state[2] -= 2 * math.pi
         if current_state[2] < -math.pi:
             current_state[2] += 2 * math.pi
-        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.07): # check the error between current state and current way point
+    
+        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.25): # check the error between current state and current way point
+            # print("current_state",current_state)
+            # print("target",pid.target)
             # calculate the current twist
             angle_details = pid.determine_angle_details(current_state)
-            print(angle_details,'\n')
+            # print(angle_details,'\n')
 
             action_details = pid.detailed_movement_information(angle_details)
-            print(action_details,'\n') 
+            # print(action_details,'\n') 
 
             control_command = pid.generate_control_command(action_details)
             print(control_command)
+
             # publish the twist
             pub_twist.publish(genTwistMsg(pid.update_value))
             #print(coord(update_value, current_state))
-            time.sleep(0.05)
+            time.sleep(0.3)
             # update the current state
-            current_state += local_to_global_velocity(pid.update_value, current_state[2])
+            current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10
+            if current_state[2] > math.pi:
+                current_state[2] -= 2 * math.pi
+            if current_state[2] < -math.pi:
+                current_state[2] += 2 * math.pi
     # stop the car and exit
     pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
-    print("===done===\n")
+    print("===done===!\n")
 
     

@@ -16,7 +16,8 @@ class MegaPiControllerNode:
         self.calibration = 100.0
 
     def twist_callback(self, twist_cmd):
-        desired_twist = self.calibration * np.array([[twist_cmd.linear.x], [twist_cmd.linear.y], [twist_cmd.angular.z]])
+        desired_twist = self.calibration * np.array([[2 * twist_cmd.linear.x], [-1 * twist_cmd.linear.y], [3 * twist_cmd.angular.z]])
+        print(desired_twist)
         # calculate the jacobian matrix
         jacobian_matrix = np.array([[1, -1, -(self.lx + self.ly)],
                                      [1, 1, (self.lx + self.ly)],
