@@ -46,7 +46,7 @@ class PIDcontroller:
         result[2] = (result[2] + np.pi) % (2 * np.pi) - np.pi
         return result
 
-    def update(self, e):
+    def update_x(self, e):
         P = self.Kp * e
 
         self.I = self.I + self.Ki * e * self.timestep 
@@ -56,11 +56,34 @@ class PIDcontroller:
 
         self.lastError = e
 
-        # scale down the twist if its norm is more than the maximum value. 
-        if(result > self.maximumValue):
-            result = self.maximumValue
-            self.I = 0.0
+        if(result!=0):
+            # scale down the twist if its norm is more than the maximum value. 
+            flag = result / abs(result)
+            if(result > self.maximumValue):
+                result = self.maximumValue * flag
+                self.I = 0.0
 
+            result = 0.01 * flag
+        return result
+    
+    def update_y(self, e):
+        P = self.Kp * e
+
+        self.I = self.I + self.Ki * e * self.timestep 
+        I = self.I
+        D = self.Kd * (e - self.lastError)
+        result = 2 * (P + I + D)
+
+        self.lastError = e
+
+        if(result!=0):
+            flag = result / abs(result)
+            # scale down the twist if its norm is more than the maximum value. 
+            if(result > self.maximumValue):
+                result = self.maximumValue * flag
+                self.I = 0.0
+
+            result = 0.02 * flag
         return result
 
     ###TODO: change points to point_1(state) and point_2(targrt)
@@ -143,7 +166,7 @@ class PIDcontroller:
             distance = detailed_info[1]
             ###TODO: need to add pid control to calculate the x_speed
             # Calculate the speed
-            v_x = self.update(distance)
+            v_x = self.update_x(distance)
             self.update_value = np.array([v_x, 0.0, 0.0])
             ###TODO: no more need to calculate the rotation time
             control_command = {"command": "move", "rb5_speed": self.update_value}
@@ -153,7 +176,7 @@ class PIDcontroller:
             rotation_before_move = detailed_info[1]
             # Calculate rotation times and move time
             ###TODO: need to add pid control to calculate the z_speed
-            v_z = self.update(rotation_before_move)
+            v_z = self.update_y(rotation_before_move)
             self.update_value = np.array([0.0, 0.0, v_z])
             ###TODO: no more need
             control_command = {"command": "rotate","rb5_speed": self.update_value}
