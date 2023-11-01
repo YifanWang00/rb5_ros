@@ -156,7 +156,7 @@ class PIDcontroller:
         if self.last_action_type != action_type:
             self.I = 0
             self.lastError = 0
-            print("===Reset===")
+            # print("===Reset===")
 
         # For 'move' actions
         if action_type == 'move':
@@ -217,12 +217,12 @@ if __name__ == "__main__":
                         [0.81,-0.06, -0.09],
                         [1.03,0.05, 0.26],
                         [1.02,0.06, 1.57],
-                        [1.02,1.94, 1.33]
+                        [1.02,1.94, 1.33],
                         [0.97,1.98, 1.94],
                         [0.95,1.99, 3.14],
                         [0.44, 1.5, -2.93],
                         [0.06, 0.06, -1.93],
-                        [0.07, 0.08, -0.93]
+                        [0.07, 0.08, -0.93],
                         [0.0,0.0,0.0],
                         ])         
 
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     print(current_state)
 
     for wp in waypoint:
-        print("move to way point", wp)
+        # print("move to way point", wp)
         # set wp as the target point
         pid.setTarget(wp)
 
@@ -254,13 +254,14 @@ if __name__ == "__main__":
         time.sleep(0.3)
 
         # update the current state
-        current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10
+        noise = np.random.uniform(low=-0.001, high=0.001, size=(3, ))
+        current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10 + noise
         # Normalize the result to between -pi and pi
         if current_state[2] > math.pi:
             current_state[2] -= 2 * math.pi
         if current_state[2] < -math.pi:
             current_state[2] += 2 * math.pi
-        print(print(current_state))
+        print(current_state)
     
         while(np.linalg.norm(pid.getError(current_state, wp)) > 0.25): # check the error between current state and current way point
             # print("current_state",current_state)
@@ -273,21 +274,23 @@ if __name__ == "__main__":
             # print(action_details,'\n') 
 
             control_command = pid.generate_control_command(action_details)
-            print(control_command)
+            # print(control_command)
 
             # publish the twist
-            pub_twist.publish(genTwistMsg(pid.update_value))
+            # pub_twist.publish(genTwistMsg(pid.update_value))
             #print(coord(update_value, current_state))
             time.sleep(0.3)
             # update the current state
-            current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10
+            noise = np.random.uniform(low=-0.001, high=0.001, size=(3, ))
+            current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10 + noise
             if current_state[2] > math.pi:
                 current_state[2] -= 2 * math.pi
             if current_state[2] < -math.pi:
                 current_state[2] += 2 * math.pi
+            # print("=====")
             print(current_state)
     # stop the car and exit
-    pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
+    # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
 
     
