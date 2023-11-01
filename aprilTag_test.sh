@@ -31,7 +31,7 @@ if [ $? != 0 ]; then
   tmux select-pane -t 2
   tmux send-keys "source devel/setup.bash" C-m
   tmux send-keys "sleep 3" C-m
-  tmux send-keys "rosrun tf static_transform_publisher 1 0 0 0 0 0 1 map marker_0 100" C-m
+  tmux send-keys "rosrun tf static_transform_publisher 1 0 0 0 0 0 map marker_0 100" C-m
 
   tmux split-window -v
   tmux select-pane -t 3
