@@ -210,7 +210,7 @@ if __name__ == "__main__":
     print("===start===\n")
 
     rospy.init_node("hw1")
-    pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
+    #pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
     waypoint = np.array([
                         [0.0,0.0,0.0], 
@@ -231,6 +231,7 @@ if __name__ == "__main__":
 
     # init current state
     current_state = np.array([0.0,0.0,0.0])
+    print(current_state)
 
     for wp in waypoint:
         print("move to way point", wp)
@@ -244,21 +245,22 @@ if __name__ == "__main__":
         # print(action_details,'\n') 
 
         control_command = pid.generate_control_command(action_details)
-        print(control_command)
+        # print(control_command)
 
         # used to active
         # publish the twist
-        pub_twist.publish(genTwistMsg(pid.update_value))
+        #pub_twist.publish(genTwistMsg(pid.update_value))
         #print(coord(update_value, current_state))
-        time.sleep(0.5)
+        time.sleep(0.3)
 
         # update the current state
-        current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 2
+        current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10
         # Normalize the result to between -pi and pi
         if current_state[2] > math.pi:
             current_state[2] -= 2 * math.pi
         if current_state[2] < -math.pi:
             current_state[2] += 2 * math.pi
+        print(print(current_state))
     
         while(np.linalg.norm(pid.getError(current_state, wp)) > 0.25): # check the error between current state and current way point
             # print("current_state",current_state)
@@ -283,6 +285,7 @@ if __name__ == "__main__":
                 current_state[2] -= 2 * math.pi
             if current_state[2] < -math.pi:
                 current_state[2] += 2 * math.pi
+            print(current_state)
     # stop the car and exit
     pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
