@@ -29,9 +29,9 @@ from mpi_control import MegaPiController
 class MegaPiControllerNode:
     def __init__(self, verbose=True, debug=False):
         self.mpi_ctrl = MegaPiController(port='/dev/ttyUSB0', verbose=verbose)
-        self.v_max_default_straight = 100
-        self.v_max_default_slide = 100
-        self.v_max_default_rotate = 50
+        self.v_max_default_straight = 30
+        self.v_max_default_slide = 0
+        self.v_max_default_rotate = -32
         self.reset_v_max()
         self.verbose = verbose
         self.debug = debug
@@ -90,7 +90,8 @@ class MegaPiControllerNode:
 
         if abs(joy_cmd.axes[2]) <= 0.1:
             if abs(joy_cmd.axes[0]) <= 0.1 and abs(joy_cmd.axes[1]) <= 0.1:
-                self.mpi_ctrl.carStop()
+                # self.mpi_ctrl.carStop()
+                pass
             elif abs(joy_cmd.axes[0]) <= 0.1:
                 self.mpi_ctrl.carStraight(v_straight)
             elif abs(joy_cmd.axes[1]) <= 0.1:
@@ -102,6 +103,9 @@ class MegaPiControllerNode:
                 self.mpi_ctrl.carRotate(v_rotate)
             else:
                 self.mpi_ctrl.carMixed(v_straight, v_rotate, v_slide)
+        
+        if abs(joy_cmd.axes[3]) == 1:
+            self.mpi_ctrl.carStop()
         
 
 if __name__ == "__main__":

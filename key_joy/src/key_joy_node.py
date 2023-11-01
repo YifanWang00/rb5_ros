@@ -62,6 +62,8 @@ class KeyJoyNode:
             joy_msg.axes[2] = -1.0
         elif key == 'e':
             joy_msg.axes[2] = 1.0
+        elif key == 'k':
+            joy_msg.axes[3] = 1.0       
         elif (len(key) > 0 and ord(key) == 27) or (key == '\x03'):
             flag = False
         return joy_msg, flag
