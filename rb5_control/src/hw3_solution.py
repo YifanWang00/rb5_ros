@@ -216,7 +216,7 @@ if __name__ == "__main__":
 
     print("===start===\n")
 
-    rospy.init_node("hw1")
+    rospy.init_node("hw3")
     #pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
     waypoint = np.array([
