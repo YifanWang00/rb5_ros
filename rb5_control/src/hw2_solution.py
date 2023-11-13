@@ -89,8 +89,8 @@ def getCurrentPos(l):
         if l.frameExists(camera_name):
             try:
                 now = rospy.Time()
-                # wait for the transform ready from the map to the camera for 1 second.
-                l.waitForTransform("map", camera_name, now, rospy.Duration(1.0))
+                # wait for the transform ready from the map to the camera for 0.5 second.
+                l.waitForTransform("map", camera_name, now, rospy.Duration(0.5))
                 # extract the transform camera pose in the map coordinate.
                 (trans, rot) = l.lookupTransform("map", camera_name, now)
                 # convert the rotate matrix to theta angle in 2d
