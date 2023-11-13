@@ -29,7 +29,7 @@ from mpi_control import MegaPiController
 class MegaPiControllerNode:
     def __init__(self, verbose=True, debug=False):
         self.mpi_ctrl = MegaPiController(port='/dev/ttyUSB0', verbose=verbose)
-        self.v_max_default_straight = 30
+        self.v_max_default_straight = 25
         self.v_max_default_slide = 0
         self.v_max_default_rotate = -32
         self.reset_v_max()
