@@ -27,13 +27,17 @@ class MegaPiControllerNode:
 
         # # send command to each wheel
         # self.mpi_ctrl.setFourMotors(result[0][0], result[1][0], result[2][0], result[3][0])
-
+        print(twist_cmd.linear.x,twist_cmd.angular.z)
         if abs(twist_cmd.linear.x) > 0:
             direct = twist_cmd.linear.x / abs(twist_cmd.linear.x)
-            self.mpi_ctrl.setFourMotors(-25 * direct, 25 * direct, -25 * direct, 25 * direct)
+            # self.mpi_ctrl.setFourMotors(-25 * direct, 25 * direct, -25 * direct, 25 * direct)
+            # print(-25 * direct, 25 * direct, -25 * direct, 25 * direct)
+            self.mpi_ctrl.carRotate(25 * direct)
         elif abs(twist_cmd.angular.z) > 0:
             direct = twist_cmd.angular.z / abs(twist_cmd.angular.z)
-            self.mpi_ctrl.setFourMotors(-32 * direct, -32 * direct, -32 * direct, -32 * direct)
+            # self.mpi_ctrl.setFourMotors(-32 * direct, -32 * direct, -32 * direct, -32 * direct)
+            # print(-32 * direct, -32 * direct, -32 * direct, -32 * direct)
+            self.mpi_ctrl.carStraight(32 * direct)
         else:
             self.mpi_ctrl.setFourMotors(0, 0, 0, 0)
         

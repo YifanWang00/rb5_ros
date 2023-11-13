@@ -31,12 +31,12 @@ class PIDcontroller:
         self.timestep = 0.1
 
         self.maximumValue = 1
-        self.angular_tolerance = 0.2
+        self.angular_tolerance = 0.1
         self.last_action_type = "move"
         self.update_value = np.array([0.0,0.0,0.0])
 
-        self.v_straight = 0.0999
-        self.v_rotate = 0.86466
+        self.v_straight = 0.085
+        self.v_rotate = 0.75
 
     def setTarget(self, state):
         """
@@ -217,11 +217,14 @@ if __name__ == "__main__":
     print("===start===\n")
 
     rospy.init_node("hw3")
-    #pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
+    pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
     waypoint = np.array([
                         [0.0,0.0,0.0], 
                         [0.8,0.0, math.pi/2],
+                        [0.8,0.8,math.pi], 
+                        [0.0,0.8, -math.pi/2],
+                        [0.0,0.0,0.0]
                         ])         
 
     # init pid controller
@@ -247,7 +250,7 @@ if __name__ == "__main__":
 
         # used to active
         # publish the twist
-        #pub_twist.publish(genTwistMsg(pid.update_value))
+        pub_twist.publish(genTwistMsg(pid.update_value))
         #print(coord(update_value, current_state))
         time.sleep(pid.timestep)
 
@@ -262,7 +265,7 @@ if __name__ == "__main__":
             current_state[2] += 2 * math.pi
         print(current_state)
     
-        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.25): # check the error between current state and current way point
+        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.15): # check the error between current state and current way point
             # print("current_state",current_state)
             # print("target",pid.target)
             # calculate the current twist
@@ -276,7 +279,7 @@ if __name__ == "__main__":
             # print(control_command)
 
             # publish the twist
-            # pub_twist.publish(genTwistMsg(pid.update_value))
+            pub_twist.publish(genTwistMsg(pid.update_value))
             #print(coord(update_value, current_state))
             time.sleep(pid.timestep)
             # update the current state
@@ -290,7 +293,7 @@ if __name__ == "__main__":
             # print("=====")
             print(current_state)
     # stop the car and exit
-    # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
+    pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
 
     

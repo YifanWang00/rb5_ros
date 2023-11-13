@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="rb5_control" type="hw3_solution.py" name="hw3_sol_node" output="screen"/>
+</launch>
