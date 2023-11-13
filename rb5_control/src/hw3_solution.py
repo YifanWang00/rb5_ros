@@ -91,7 +91,6 @@ class PIDcontroller:
             result = self.v_rotate * flag
         return result
     
-
     ###TODO: change points to point_1(state) and point_2(targrt)
     def determine_angle_details(self, current_state):
         """
@@ -189,6 +188,36 @@ class PIDcontroller:
 
         return control_command
 
+def getCurrentPos(l):
+    """
+    Given the tf listener, we consider the camera's z-axis is the header of the car
+    """
+    br = tf.TransformBroadcaster()
+    result = None
+    foundSolution = False
+
+    for i in range(0, 9):
+        camera_name = "camera_" + str(i)
+        if l.frameExists(camera_name):
+            try:
+                now = rospy.Time()
+                # wait for the transform ready from the map to the camera for 1 second.
+                l.waitForTransform("map", camera_name, now, rospy.Duration(1.0))
+                # extract the transform camera pose in the map coordinate.
+                (trans, rot) = l.lookupTransform("map", camera_name, now)
+                # convert the rotate matrix to theta angle in 2d
+                matrix = quaternion_matrix(rot)
+                angle = math.atan2(matrix[1][2], matrix[0][2])
+                # this is not required, I just used this for debug in RVIZ
+                br.sendTransform((trans[0], trans[1], 0), tf.transformations.quaternion_from_euler(0,0,angle), rospy.Time.now(), "base_link", "map")
+                result = np.array([trans[0], trans[1], angle])
+                foundSolution = True
+                break
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf2_ros.TransformException):
+                print("meet error")
+    listener.clear()
+    return foundSolution, result
+
 def genTwistMsg(desired_twist):
     """
     Convert the twist to twist msg.
@@ -219,6 +248,9 @@ if __name__ == "__main__":
     rospy.init_node("hw3")
     pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
+    listener = tf.TransformListener()
+
+    #square
     waypoint = np.array([
                         [0.0,0.0,0.0], 
                         [0.8,0.0, math.pi/2],
@@ -259,6 +291,11 @@ if __name__ == "__main__":
         # current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10 + noise
         current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
         # Normalize the result to between -pi and pi
+
+        found_state, estimated_state = getCurrentPos(listener)
+        if found_state: # if the tag is detected, we can use it to update current state.
+            current_state = estimated_state
+
         if current_state[2] > math.pi:
             current_state[2] -= 2 * math.pi
         if current_state[2] < -math.pi:
@@ -286,6 +323,10 @@ if __name__ == "__main__":
             # noise = np.random.uniform(low=-0.001, high=0.001, size=(3, ))
             # current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10 + noise
             current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
+            found_state, estimated_state = getCurrentPos(listener)
+            if found_state:
+                current_state = estimated_state
+            
             if current_state[2] > math.pi:
                 current_state[2] -= 2 * math.pi
             if current_state[2] < -math.pi:
