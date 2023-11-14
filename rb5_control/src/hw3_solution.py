@@ -9,7 +9,7 @@ import tf2_ros
 import time
 import numpy as np
 from geometry_msgs.msg import Twist
-from tf.transformations import quaternion_matrix
+from tf.transformations import quaternion_matrix, euler_from_quaternion
 
 # Global 
 pid = None
@@ -197,23 +197,29 @@ def getCurrentPos(l):
     result = None
     foundSolution = False
 
+    # print("Call getCurrentPos")
     for i in range(0, 9):
         camera_name = "camera_" + str(i)
         marker_name = "marker_" + str(i)
         if l.frameExists(camera_name):
+            print("Found {}".format(camera_name))
             try:
                 now = rospy.Time()
                 # wait for the transform ready from the map to the camera for 1 second.
-                l.waitForTransform(camera_name, marker_name, now, rospy.Duration(1.0))
+                l.waitForTransform(camera_name, marker_name, now, rospy.Duration(0.5))
                 # extract the transform camera pose in the map coordinate.
                 (trans, rot) = l.lookupTransform(camera_name, marker_name, now)
                 # convert the rotate matrix to theta angle in 2d
                 matrix = quaternion_matrix(rot)
                 angle = math.atan2(matrix[1][2], matrix[0][2])
+                euler = euler_from_quaternion(rot)
                 # this is not required, I just used this for debug in RVIZ
                 # br.sendTransform((trans[0], trans[1], 0), tf.transformations.quaternion_from_euler(0,0,angle), rospy.Time.now(), "base_link", "map")
                 result = np.array([trans[0], trans[1], angle])
-                print(result)
+                result2 = [(trans[2], trans[0]), i]
+                print(result2)
+                # print("***marker_id={}***\n, trans[0]={:.3f}, trans[1]={:.3f}, trans[2]={:.3f}, euler={}"
+                #         .format(i, trans[0], trans[1], trans[2], euler))
                 foundSolution = True
                 break
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf2_ros.TransformException):
@@ -267,7 +273,7 @@ if __name__ == "__main__":
 
     # init current state
     current_state = np.array([0.0,0.0,0.0])
-    print(current_state)
+    # print(current_state)
 
     for wp in waypoint:
         # print("move to way point", wp)
@@ -303,9 +309,9 @@ if __name__ == "__main__":
             current_state[2] -= 2 * math.pi
         if current_state[2] < -math.pi:
             current_state[2] += 2 * math.pi
-        print(current_state)
+        # print(current_state)
     
-        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.15): # check the error between current state and current way point
+        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.12): # check the error between current state and current way point
             # print("current_state",current_state)
             # print("target",pid.target)
             # calculate the current twist
@@ -335,7 +341,7 @@ if __name__ == "__main__":
             if current_state[2] < -math.pi:
                 current_state[2] += 2 * math.pi
             # print("=====")
-            print(current_state)
+            # print(current_state)
     # stop the car and exit
     # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
