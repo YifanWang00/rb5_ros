@@ -62,7 +62,7 @@ class PIDcontroller:
 
         if(result!=0):
             # scale down the twist if its norm is more than the maximum value. 
-            # flag = result / abs(result)
+            flag = result / abs(result)
             # if(result > self.maximumValue):
             #     result = self.maximumValue * flag
             #     self.I = 0.0
@@ -207,7 +207,7 @@ def getMarkerPos(l):
                 # br.sendTransform((trans[0], trans[1], 0), tf.transformations.quaternion_from_euler(0,0,angle), rospy.Time.now(), "base_link", "map")
 
                 # result = np.array([trans[0], trans[1], angle])
-                result = [(trans[2], trans[0]), i]
+                result = [(trans[2], -1*trans[0]), i]
                 print(result)
                 # print("***marker_id={}***\n, trans[0]={:.3f}, trans[1]={:.3f}, trans[2]={:.3f}, euler={}"
                 #         .format(i, trans[0], trans[1], trans[2], euler))
@@ -330,6 +330,7 @@ if __name__ == "__main__":
             #print(coord(update_value, current_state))
             time.sleep(pid.timestep)
             # update the current state
+            found_marker, marker_info = getMarkerPos(listener)
             current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
             # found_state, estimated_state = getCurrentPos(listener)
             # if found_state:
