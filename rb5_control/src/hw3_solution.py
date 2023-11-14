@@ -16,6 +16,8 @@ from tf.transformations import quaternion_matrix, euler_from_quaternion
 # pub_twist = None
 # waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
 # current_state = np.array([0.0, 0.0, 0.0]) 
+Q_m = np.diag([0.05 ** 2, 0.05 ** 2, 0.15 ** 2]) 
+State_cov = np.diag([1, 1, 1]) 
 
 class PIDcontroller:
     def __init__(self, Kp, Ki, Kd):
@@ -246,6 +248,29 @@ def calculate_global_marker_position(x_c, y_c, theta_c, x_obs, y_obs):
     y_m = y_c + x_obs * np.sin(theta_c) + y_obs * np.cos(theta_c)
     return x_m, y_m
 
+def expand_diag_matrix(original_matrix, n):
+    diag_elements = np.diag(original_matrix)
+    
+    expanded_matrix = np.zeros((n, n))
+
+    for i in range(min(len(diag_elements), n)):
+        expanded_matrix[i, i] = diag_elements[i]
+    
+    return expanded_matrix
+
+def expand_and_fill_diag_matrix(original_matrix, n, x):
+    original_size = original_matrix.shape[0]
+    
+    expanded_matrix = np.zeros((n, n))
+
+    for i in range(original_size):
+        expanded_matrix[i, i] = original_matrix[i, i]
+
+    for i in range(original_size, n):
+        expanded_matrix[i, i] = x
+    
+    return expanded_matrix
+
 if __name__ == "__main__":
 
     print("===start===\n")
@@ -295,7 +320,16 @@ if __name__ == "__main__":
         # pub_twist.publish(genTwistMsg(pid.update_value))
         time.sleep(pid.timestep)
 
+        #! Calculate X_k
         current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
+
+        # Normalize the result to between -pi and pi
+        if current_state[2] > math.pi:
+            current_state[2] -= 2 * math.pi
+        if current_state[2] < -math.pi:
+            current_state[2] += 2 * math.pi
+        # print(current_state)
+
         X_k = current_state
 
         #! Check whether we observe a marker
@@ -311,22 +345,9 @@ if __name__ == "__main__":
                 X_k = np.append(X_k, y_new)
                 print(X_k)
 
-        #! Calculate X_k
+        #! Calculate State_cov_k
         # X_k = 
-        # update the current state
 
-        current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
-        # Normalize the result to between -pi and pi
-
-        # found_state, estimated_state = getCurrentPos(listener)
-        # if found_state: # if the tag is detected, we can use it to update current state.
-        #     current_state = estimated_state
-
-        if current_state[2] > math.pi:
-            current_state[2] -= 2 * math.pi
-        if current_state[2] < -math.pi:
-            current_state[2] += 2 * math.pi
-        # print(current_state)
     
         while(np.linalg.norm(pid.getError(current_state, wp)) > 0.12): # check the error between current state and current way point
             # print("current_state",current_state)
