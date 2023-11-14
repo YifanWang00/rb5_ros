@@ -12,12 +12,10 @@ from geometry_msgs.msg import Twist
 from tf.transformations import quaternion_matrix, euler_from_quaternion
 
 # Global 
-pid = None
-pub_twist = None
-current_waypoint_index = 0
+# pid = None
+# pub_twist = None
 # waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
-current_state = np.array([0.0, 0.0, 0.0]) 
-step_num = 0
+# current_state = np.array([0.0, 0.0, 0.0]) 
 
 class PIDcontroller:
     def __init__(self, Kp, Ki, Kd):
@@ -35,6 +33,7 @@ class PIDcontroller:
         self.last_action_type = "move"
         self.update_value = np.array([0.0,0.0,0.0])
 
+        #TODO: which match the real velocity
         self.v_straight = 0.085
         self.v_rotate = 0.75
 
@@ -63,10 +62,10 @@ class PIDcontroller:
 
         if(result!=0):
             # scale down the twist if its norm is more than the maximum value. 
-            flag = result / abs(result)
-            if(result > self.maximumValue):
-                result = self.maximumValue * flag
-                self.I = 0.0
+            # flag = result / abs(result)
+            # if(result > self.maximumValue):
+            #     result = self.maximumValue * flag
+            #     self.I = 0.0
 
             result = self.v_straight * flag
         return result
@@ -84,14 +83,13 @@ class PIDcontroller:
         if(result!=0):
             flag = result / abs(result)
             # scale down the twist if its norm is more than the maximum value. 
-            if(result > self.maximumValue):
-                result = self.maximumValue * flag
-                self.I = 0.0
+            # if(result > self.maximumValue):
+            #     result = self.maximumValue * flag
+            #     self.I = 0.0
 
             result = self.v_rotate * flag
         return result
     
-    ###TODO: change points to point_1(state) and point_2(targrt)
     def determine_angle_details(self, current_state):
         """
         Determines the target angle and the angle difference for the robot for each pair of points.
@@ -120,32 +118,27 @@ class PIDcontroller:
         """
         return math.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
 
-    ###TODO: change to only one action
     def detailed_movement_information(self, angle_details):
 
         angle_diff = round(angle_details["angle_difference_robot_target"], 2)
         # Check if the rounded angle difference is close to any of the four angles for 'move' actions
-        ###TODO: change to only forward and backward, need to focus on tolerance
-        ###TODO: no more need 1.57 and -1.57
         distance = self.calculate_distance((angle_details["current_state"][0], angle_details["current_state"][1]), (angle_details["target"][0], angle_details["target"][1]))
-        
+        #TODO:check whether can reduce 0.05
         if (abs(angle_diff - 0) <= self.angular_tolerance) and distance > 0.05:
             result = ['move', distance]
             return result
         elif (abs(angle_diff - math.pi) <= self.angular_tolerance or abs(angle_diff + math.pi) <= self.angular_tolerance) and distance > 0.05:
-            ###TODO: distance used to input into pid control, no more need rotation_after_move
             result = ['move', -distance]
             return result
         # For 'rotate' actions
+        #TODO:check whether can reduce 0.05
         elif distance > 0.05:
-            ###TODO: notice!!!
             if -math.pi/2 < angle_diff or angle_diff < math.pi/2:
                 rotation_before_move = angle_diff
             elif angle_diff > 0:
                 rotation_before_move = angle_diff - math.pi
             else:
                 rotation_before_move = angle_diff + math.pi
-            ###TODO: distance used to input into pid control, no more need rotation_after_move and distance
             result = ['rotate', rotation_before_move]
             return result
         else:
@@ -153,7 +146,6 @@ class PIDcontroller:
             result = ['rotate', rotation_before_move]
             return result
 
-    ###TODO: need to output right/left/forward/backward
     def generate_control_command(self, detailed_info):
 
         action_type = detailed_info[0]
@@ -167,11 +159,9 @@ class PIDcontroller:
         # For 'move' actions
         if action_type == 'move':
             distance = detailed_info[1]
-            ###TODO: need to add pid control to calculate the x_speed
             # Calculate the speed
             v_x = self.update_x(distance)
             self.update_value = np.array([v_x, 0.0, 0.0])
-            ###TODO: no more need to calculate the rotation time
             control_command = {"command": "move", "rb5_speed": self.update_value}
             self.last_action_type = 'move'
 
@@ -179,25 +169,24 @@ class PIDcontroller:
         elif action_type == 'rotate':
             rotation_before_move = detailed_info[1]
             # Calculate rotation times and move time
-            ###TODO: need to add pid control to calculate the z_speed
             v_z = self.update_z(rotation_before_move)
             self.update_value = np.array([0.0, 0.0, v_z])
-            ###TODO: no more need
             control_command = {"command": "rotate","rb5_speed": self.update_value}
             self.last_action_type = 'rotate'
 
         return control_command
 
-#TODO: a new use
-def getCurrentPos(l):
+#TODO: used to gain the first marker we seen, we gain result = [(x_i, y_i), i]
+def getMarkerPos(l):
     """
     Given the tf listener, we consider the camera's z-axis is the header of the car
     """
     br = tf.TransformBroadcaster()
     result = None
-    foundSolution = False
+    foundMarker = False
 
     # print("Call getCurrentPos")
+    #TODO: we may redefine the tf_tree
     for i in range(0, 9):
         camera_name = "camera_" + str(i)
         marker_name = "marker_" + str(i)
@@ -210,22 +199,24 @@ def getCurrentPos(l):
                 # extract the transform camera pose in the map coordinate.
                 (trans, rot) = l.lookupTransform(camera_name, marker_name, now)
                 # convert the rotate matrix to theta angle in 2d
-                matrix = quaternion_matrix(rot)
-                angle = math.atan2(matrix[1][2], matrix[0][2])
-                euler = euler_from_quaternion(rot)
+                # matrix = quaternion_matrix(rot)
+                # angle = math.atan2(matrix[1][2], matrix[0][2])
+                # euler = euler_from_quaternion(rot)
+
                 # this is not required, I just used this for debug in RVIZ
                 # br.sendTransform((trans[0], trans[1], 0), tf.transformations.quaternion_from_euler(0,0,angle), rospy.Time.now(), "base_link", "map")
-                result = np.array([trans[0], trans[1], angle])
-                result2 = [(trans[2], trans[0]), i]
-                print(result2)
+
+                # result = np.array([trans[0], trans[1], angle])
+                result = [(trans[2], trans[0]), i]
+                print(result)
                 # print("***marker_id={}***\n, trans[0]={:.3f}, trans[1]={:.3f}, trans[2]={:.3f}, euler={}"
                 #         .format(i, trans[0], trans[1], trans[2], euler))
-                foundSolution = True
+                foundMarker = True
                 break
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf2_ros.TransformException):
                 print("meet error")
     listener.clear()
-    return foundSolution, result
+    return foundMarker, result
 
 def genTwistMsg(desired_twist):
     """
@@ -275,6 +266,8 @@ if __name__ == "__main__":
     current_state = np.array([0.0,0.0,0.0])
     # print(current_state)
 
+    marker_dic = {}
+
     for wp in waypoint:
         # print("move to way point", wp)
         # set wp as the target point
@@ -290,20 +283,28 @@ if __name__ == "__main__":
         # print(control_command)
 
         # used to active
-        # publish the twist
         # pub_twist.publish(genTwistMsg(pid.update_value))
-        #print(coord(update_value, current_state))
         time.sleep(pid.timestep)
 
+        #! check whether we observe a marker
+        found_marker, marker_info = getMarkerPos(listener)
+        if found_marker:
+            marker_name = "marker_" + str(marker_info[1])
+            if marker_name in marker_dic:
+                pass
+            #! If it is a new marker we add it to the marker_dic
+            else:
+                marker_dic[marker_name] = len(marker_dic)
+            print(marker_dic)
+
         # update the current state
-        # noise = np.random.uniform(low=-0.001, high=0.001, size=(3, ))
-        # current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10 + noise
+
         current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
         # Normalize the result to between -pi and pi
 
-        found_state, estimated_state = getCurrentPos(listener)
-        if found_state: # if the tag is detected, we can use it to update current state.
-            current_state = estimated_state
+        # found_state, estimated_state = getCurrentPos(listener)
+        # if found_state: # if the tag is detected, we can use it to update current state.
+        #     current_state = estimated_state
 
         if current_state[2] > math.pi:
             current_state[2] -= 2 * math.pi
@@ -329,12 +330,10 @@ if __name__ == "__main__":
             #print(coord(update_value, current_state))
             time.sleep(pid.timestep)
             # update the current state
-            # noise = np.random.uniform(low=-0.001, high=0.001, size=(3, ))
-            # current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10 + noise
             current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
-            found_state, estimated_state = getCurrentPos(listener)
-            if found_state:
-                current_state = estimated_state
+            # found_state, estimated_state = getCurrentPos(listener)
+            # if found_state:
+            #     current_state = estimated_state
             
             if current_state[2] > math.pi:
                 current_state[2] -= 2 * math.pi
