@@ -22,3 +22,16 @@ Hx = H @ x
 Hx_rounded = np.round(Hx, 3)
 
 print(Hx_rounded)
+
+
+# 小车的全局坐标和方向
+x_c, y_c, theta_c = 2, 2, np.pi / 4  # 小车位置(2,2)和方向角45度
+
+# 观测到的地标相对位置
+x_obs, y_obs = 2 * np.sqrt(2), 0  # 假设观测到的地标相对于小车的局部坐标
+
+# 将局部坐标转换为全局坐标
+x_m = x_c + x_obs * np.cos(theta_c) - y_obs * np.sin(theta_c)
+y_m = y_c + x_obs * np.sin(theta_c) + y_obs * np.cos(theta_c)
+
+print((x_m, y_m))  # 地标的全局坐标

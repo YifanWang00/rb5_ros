@@ -241,6 +241,11 @@ def local_to_global_velocity(local_velocity, global_orientation):
     global_velocity = np.dot(J, local_velocity)
     return global_velocity
 
+def calculate_global_marker_position(x_c, y_c, theta_c, x_obs, y_obs):
+    x_m = x_c + x_obs * np.cos(theta_c) - y_obs * np.sin(theta_c)
+    y_m = y_c + x_obs * np.sin(theta_c) + y_obs * np.cos(theta_c)
+    return x_m, y_m
+
 if __name__ == "__main__":
 
     print("===start===\n")
@@ -268,6 +273,9 @@ if __name__ == "__main__":
 
     marker_dic = {}
 
+    #! init X_k
+    X_k = current_state
+
     for wp in waypoint:
         # print("move to way point", wp)
         # set wp as the target point
@@ -283,20 +291,28 @@ if __name__ == "__main__":
         # print(control_command)
 
         # used to active
+        # ! publish pair with X_k update
         # pub_twist.publish(genTwistMsg(pid.update_value))
         time.sleep(pid.timestep)
 
-        #! check whether we observe a marker
+        current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
+        X_k = current_state
+
+        #! Check whether we observe a marker
         found_marker, marker_info = getMarkerPos(listener)
         if found_marker:
             marker_name = "marker_" + str(marker_info[1])
-            if marker_name in marker_dic:
-                pass
             #! If it is a new marker we add it to the marker_dic
-            else:
+            if marker_name not in marker_dic:
                 marker_dic[marker_name] = len(marker_dic)
-            print(marker_dic)
+                print(marker_dic)
+                x_new, y_new = calculate_global_marker_position(X_k[0], X_k[1], X_k[2], marker_info[0][0], marker_info[0][1])
+                X_k = np.append(X_k, x_new)
+                X_k = np.append(X_k, y_new)
+                print(X_k)
 
+        #! Calculate X_k
+        # X_k = 
         # update the current state
 
         current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
@@ -330,7 +346,7 @@ if __name__ == "__main__":
             #print(coord(update_value, current_state))
             time.sleep(pid.timestep)
             # update the current state
-            found_marker, marker_info = getMarkerPos(listener)
+            # found_marker, marker_info = getMarkerPos(listener)
             current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
             # found_state, estimated_state = getCurrentPos(listener)
             # if found_state:
