@@ -188,6 +188,7 @@ class PIDcontroller:
 
         return control_command
 
+#TODO: a new use
 def getCurrentPos(l):
     """
     Given the tf listener, we consider the camera's z-axis is the header of the car
@@ -198,19 +199,21 @@ def getCurrentPos(l):
 
     for i in range(0, 9):
         camera_name = "camera_" + str(i)
+        marker_name = "marker_" + str(i)
         if l.frameExists(camera_name):
             try:
                 now = rospy.Time()
                 # wait for the transform ready from the map to the camera for 1 second.
-                l.waitForTransform("map", camera_name, now, rospy.Duration(1.0))
+                l.waitForTransform(camera_name, marker_name, now, rospy.Duration(1.0))
                 # extract the transform camera pose in the map coordinate.
-                (trans, rot) = l.lookupTransform("map", camera_name, now)
+                (trans, rot) = l.lookupTransform(camera_name, marker_name, now)
                 # convert the rotate matrix to theta angle in 2d
                 matrix = quaternion_matrix(rot)
                 angle = math.atan2(matrix[1][2], matrix[0][2])
                 # this is not required, I just used this for debug in RVIZ
-                br.sendTransform((trans[0], trans[1], 0), tf.transformations.quaternion_from_euler(0,0,angle), rospy.Time.now(), "base_link", "map")
+                # br.sendTransform((trans[0], trans[1], 0), tf.transformations.quaternion_from_euler(0,0,angle), rospy.Time.now(), "base_link", "map")
                 result = np.array([trans[0], trans[1], angle])
+                print(result)
                 foundSolution = True
                 break
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf2_ros.TransformException):
@@ -246,7 +249,7 @@ if __name__ == "__main__":
     print("===start===\n")
 
     rospy.init_node("hw3")
-    pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
+    # pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
     listener = tf.TransformListener()
 
@@ -282,7 +285,7 @@ if __name__ == "__main__":
 
         # used to active
         # publish the twist
-        pub_twist.publish(genTwistMsg(pid.update_value))
+        # pub_twist.publish(genTwistMsg(pid.update_value))
         #print(coord(update_value, current_state))
         time.sleep(pid.timestep)
 
@@ -316,7 +319,7 @@ if __name__ == "__main__":
             # print(control_command)
 
             # publish the twist
-            pub_twist.publish(genTwistMsg(pid.update_value))
+            # pub_twist.publish(genTwistMsg(pid.update_value))
             #print(coord(update_value, current_state))
             time.sleep(pid.timestep)
             # update the current state
@@ -334,7 +337,7 @@ if __name__ == "__main__":
             # print("=====")
             print(current_state)
     # stop the car and exit
-    pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
+    # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
 
     

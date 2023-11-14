@@ -47,6 +47,12 @@ void publishTransforms(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs:
   tf::Matrix3x3 so3_mat;
   tf::Transform tf;
   static tf::TransformBroadcaster br;
+
+  //TODO: add new br
+  tf::Quaternion q_new;
+  tf::Transform tf_new;
+  static tf::TransformBroadcaster br_new;
+
   geometry_msgs::PoseArray pose_array_msg;
   pose_array_msg.header = header;
 
@@ -54,6 +60,8 @@ void publishTransforms(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs:
 
     // constrain the marker pose in 2d
     tf.setOrigin(tf::Vector3(poses[i].t->data[0], 0, poses[i].t->data[2]));
+
+    tf_new.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
 
     so3_mat.setValue(poses[i].R->data[0],0,-poses[i].R->data[6],
 		     0,1,0,
@@ -77,11 +85,19 @@ void publishTransforms(vector<apriltag_pose_t> poses, vector<int> ids, std_msgs:
     so3_mat.getRPY(roll, pitch, yaw); // so3 to RPY
     q.setRPY(roll, pitch, yaw);
 
+    q_new.setRPY(0, 0, 0);
+
     tf.setRotation(q);
+
+    tf_new.setRotation(q_new);
 
     string marker_name = "marker_" + to_string(ids[i]);
     string camera_name= "camera_" + to_string(ids[i]);
-    br.sendTransform(tf::StampedTransform(tf.inverse(), ros::Time::now(), marker_name, camera_name));
+
+    br.sendTransform(tf::StampedTransform(tf, ros::Time::now(), camera_name, marker_name));
+    
+    br_new.sendTransform(tf::StampedTransform(tf_new, ros::Time::now(), "robot", camera_name));
+
     //ROS_INFO("Transformation published for marker.");
     
     geometry_msgs::Pose pose;
