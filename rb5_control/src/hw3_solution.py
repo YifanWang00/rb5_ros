@@ -18,6 +18,7 @@ from tf.transformations import quaternion_matrix, euler_from_quaternion
 # current_state = np.array([0.0, 0.0, 0.0]) 
 Q_m = np.diag([0.05 ** 2, 0.05 ** 2, 0.15 ** 2]) 
 State_cov = np.diag([1, 1, 1]) 
+Cov_init = 1
 
 class PIDcontroller:
     def __init__(self, Kp, Ki, Kd):
@@ -336,16 +337,22 @@ if __name__ == "__main__":
         found_marker, marker_info = getMarkerPos(listener)
         if found_marker:
             marker_name = "marker_" + str(marker_info[1])
-            #! If it is a new marker we add it to the marker_dic
+            #! If it is a new marker
             if marker_name not in marker_dic:
+                #! Add it to the marker_dic
                 marker_dic[marker_name] = len(marker_dic)
                 print(marker_dic)
+                #! Add it to X_k
                 x_new, y_new = calculate_global_marker_position(X_k[0], X_k[1], X_k[2], marker_info[0][0], marker_info[0][1])
                 X_k = np.append(X_k, x_new)
                 X_k = np.append(X_k, y_new)
                 print(X_k)
+                #! Expend State_cov
+                State_cov = expand_and_fill_diag_matrix(State_cov, len(X_k), Cov_init)
+                print(State_cov)
 
-        #! Calculate State_cov_k
+        #! Calculate State_cov
+        State_cov = State_cov + expand_diag_matrix(Q_m, len(X_k))
         # X_k = 
 
     
