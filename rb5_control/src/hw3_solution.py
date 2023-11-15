@@ -8,8 +8,12 @@ import tf
 import tf2_ros
 import time
 import numpy as np
+from math import cos, sin, pi, pow
 from geometry_msgs.msg import Twist
 from tf.transformations import quaternion_matrix, euler_from_quaternion
+from utils import get_H, pad_zero_in_vector_to_n, pad_zero_in_vector_with_position, pad_zero_in_matrix_with_position, \
+    cut_element_in_vector_with_position, cut_element_in_matrix_with_position, calculate_Kalman_gain_coeff_K, \
+    utilize_Kalman_gain_coeff_K, calculate_observation_residuals, update_state_covariance
 
 # Global 
 # pid = None
@@ -20,7 +24,8 @@ step = 0
 step_1 = 0
 step_2 = 0
 
-Q_m = np.diag([0.05 ** 2, 0.05 ** 2, 0.15 ** 2]) 
+Q_m = np.diag([0.05 ** 2, 0.05 ** 2, 0.15 ** 2])
+R_m = np.diag([pow(0.05, 2), pow(0.05, 2)])
 State_cov = np.diag([1, 1, 1]) 
 Cov_init = 1
 
@@ -385,7 +390,20 @@ if __name__ == "__main__":
                 #! Expend State_cov
                 State_cov = expand_and_fill_diag_matrix(State_cov, len(X_k), Cov_init)
                 print(State_cov)
-    
+
+        if found_marker:
+            H_m = get_H(X_k[2])
+            test_cal_ob_residual = calculate_observation_residuals(H_m, X_k, marker_info[0], marker_name, marker_dic)
+            print("residual:", test_cal_ob_residual)
+
+            Kalman_gain_K = calculate_Kalman_gain_coeff_K(State_cov, H_m, R_m, marker_name, marker_dic)
+            print("Kalman_gain_K: ", Kalman_gain_K)
+
+            X_k = utilize_Kalman_gain_coeff_K(State_cov, H_m, R_m, X_k, marker_info[0], marker_name, marker_dic)
+            print("X_k_new: ", X_k)
+
+            State_cov = update_state_covariance(State_cov, H_m, Kalman_gain_K)
+            print("Updated State_cov: ", State_cov)
         # while(np.linalg.norm(pid.getError(current_state, wp)) > 0.12): # check the error between current state and current way point
         #     # print("current_state",current_state)
         #     # print("target",pid.target)
