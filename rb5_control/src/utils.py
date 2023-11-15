@@ -73,7 +73,7 @@ def utilize_Kalman_gain_coeff_K(cov_mat, H, R, xk, zk, id, id_dict):
     observation_residuals = calculate_observation_residuals(H, xk, zk ,id, id_dict)
     Kalman_gain_coeff_K = calculate_Kalman_gain_coeff_K(cov_mat, H, R, id, id_dict)
     xk = np.expand_dims(xk, axis=1)
-    return (xk - pad_zero_in_vector_with_position(id, np.dot(Kalman_gain_coeff_K, observation_residuals), id_dict)).T
+    return (xk - pad_zero_in_vector_with_position(id, np.dot(Kalman_gain_coeff_K, observation_residuals), id_dict)).T[0]
 
 def calculate_observation_residuals(H, xk, zk, id, id_dict):
     cut_xk = cut_element_in_vector_with_position(id, xk, id_dict)
