@@ -31,7 +31,6 @@ def pad_zero_in_vector_with_position(id, V, id_dict):
 def pad_zero_in_matrix_with_position(id, M, id_dict):
     V = np.diag(M)
     pad_diag_vec = pad_zero_in_vector_with_position(id, V, id_dict)
-
     return np.diag(pad_diag_vec.T[0])
     
 def cut_element_in_vector_with_position(id, V, id_dict):
@@ -52,13 +51,21 @@ def cut_element_in_vector_with_position(id, V, id_dict):
 def cut_element_in_matrix_with_position(id, M, id_dict):
     V = np.diag(M)
     del_diag_vec = cut_element_in_vector_with_position(id, V, id_dict)
-
     return np.diag(del_diag_vec.T[0])
 
 def calculate_Kalman_gain_coeff_K(cov_mat, H, R, id, id_dict):
     cutted_cov_mat = cut_element_in_matrix_with_position(id, cov_mat, id_dict)
-    
     return cutted_cov_mat @ H.T @ np.linalg.inv(H @ cutted_cov_mat @ H.T + R)
+
+def utilize_Kalman_gain_coeff_K(cov_mat, H, R, x1, xk, zk, id, id_dict):
+    observation_residuals = calculate_observation_residuals(H, xk, zk ,id, id_dict)
+    Kalman_gain_coeff_K = calculate_Kalman_gain_coeff_K(cov_mat, H, R, id, id_dict)
+    return x1 - pad_zero_in_vector_with_position(id, Kalman_gain_coeff_K @ observation_residuals, id_dict)
+
+def calculate_observation_residuals(H, xk, zk, id, id_dict):
+    cut_xk = cut_element_in_vector_with_position(id, xk, id_dict)
+    return H @ cut_xk - zk
+
 
 if __name__ == "__main__":
     id_dict = {0:1, 3:0, 4:2}
@@ -98,28 +105,3 @@ if __name__ == "__main__":
     test_K = calculate_Kalman_gain_coeff_K(test_pad_zero_in_matrix_with_position, H, R, 0, id_dict)
     print(test_K)
     print('-'*15)
-
-    print(" - Testing function XXX()...")
-    
-    print('-'*15)
-
-    print(" - Testing function XXX()...")
-    
-    print('-'*15)
-
-    print(" - Testing function XXX()...")
-    
-    print('-'*15)
-
-    print(" - Testing function XXX()...")
-    
-    print('-'*15)
-
-    print(" - Testing function XXX()...")
-    
-    print('-'*15)
-
-    print(" - Testing function XXX()...")
-    
-    print('-'*15)
-
