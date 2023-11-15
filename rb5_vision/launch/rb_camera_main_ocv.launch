@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   <arg name="topic_name_prefix" default="camera" />
   <arg name="image_compress" default="true" /> 
 
-  <node pkg="rb5_vision" type="rb5_vision" name="rb5_vision" output="screen">
+  <node pkg="rb5_vision" type="rb5_vision" name="rb5_vision" output="log">
     <param name="camera_id" value="$(arg camera_id)" />
     <param name="frame_rate" value="$(arg frame_rate)" />
     <param name="width" value="$(arg width)" />

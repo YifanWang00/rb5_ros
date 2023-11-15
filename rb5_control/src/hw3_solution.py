@@ -16,6 +16,10 @@ from tf.transformations import quaternion_matrix, euler_from_quaternion
 # pub_twist = None
 # waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
 # current_state = np.array([0.0, 0.0, 0.0]) 
+step = 0
+step_1 = 0
+step_2 = 0
+
 Q_m = np.diag([0.05 ** 2, 0.05 ** 2, 0.15 ** 2]) 
 State_cov = np.diag([1, 1, 1]) 
 Cov_init = 1
@@ -184,6 +188,9 @@ def getMarkerPos(l):
     """
     Given the tf listener, we consider the camera's z-axis is the header of the car
     """
+    global step_1, step_2
+    step_1 += 1
+    print("step_1:",step_1)
     br = tf.TransformBroadcaster()
     result = None
     foundMarker = False
@@ -194,11 +201,13 @@ def getMarkerPos(l):
         camera_name = "camera_" + str(i)
         marker_name = "marker_" + str(i)
         if l.frameExists(camera_name):
+            step_2 += 1
+            print("step_2:",step_2)
             print("Found {}".format(camera_name))
             try:
                 now = rospy.Time()
                 # wait for the transform ready from the map to the camera for 1 second.
-                l.waitForTransform(camera_name, marker_name, now, rospy.Duration(0.5))
+                l.waitForTransform(camera_name, marker_name, now, rospy.Duration(0.1))
                 # extract the transform camera pose in the map coordinate.
                 (trans, rot) = l.lookupTransform(camera_name, marker_name, now)
                 # convert the rotate matrix to theta angle in 2d
@@ -272,9 +281,28 @@ def expand_and_fill_diag_matrix(original_matrix, n, x):
     
     return expanded_matrix
 
+def expand_X_update(original_array, new_length):
+
+    if len(original_array) != 3:
+        raise ValueError("Input must be a 1D array of length 3.")
+
+    if new_length < 3:
+        raise ValueError("New length must be at least 3.")
+
+    # Create an array of zeros with the new length
+    expanded_array = np.zeros(new_length)
+
+    # Copy the original array into the expanded array
+    expanded_array[:3] = original_array
+
+    return expanded_array
+
 if __name__ == "__main__":
 
     print("===start===\n")
+    step = 0
+    step_1 = -1
+    step_2 = 0
 
     rospy.init_node("hw3")
     # pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
@@ -283,55 +311,62 @@ if __name__ == "__main__":
 
     #square
     waypoint = np.array([
-                        [0.0,0.0,0.0], 
-                        [0.8,0.0, math.pi/2],
-                        [0.8,0.8,math.pi], 
-                        [0.0,0.8, -math.pi/2],
-                        [0.0,0.0,0.0]
+                        [1.0,0.0,0.0], 
+                        # [0.8,0.0, math.pi/2],
+                        # [0.8,0.8,math.pi], 
+                        # [0.0,0.8, -math.pi/2],
+                        # [0.0,0.0,0.0]
                         ])         
 
     # init pid controller
     pid = PIDcontroller(0.02,0.005,0.005)
 
-    # init current state
-    current_state = np.array([0.0,0.0,0.0])
-    # print(current_state)
-
     marker_dic = {}
 
     #! init X_k
-    X_k = current_state
+    X_k = np.array([0.0,0.0,0.0])
 
+    print("X:",step, X_k)
+
+    # ! active 
+    found_marker, marker_info = getMarkerPos(listener)
+        # pub_twist.publish(genTwistMsg(pid.update_value))
+    time.sleep(1)
+    
     for wp in waypoint:
         # print("move to way point", wp)
-        # set wp as the target point
+        # ! set wp as the target point
         pid.setTarget(wp)
 
-        angle_details = pid.determine_angle_details(current_state)
+        #! pid calculate
+        angle_details = pid.determine_angle_details(X_k)
         # print(angle_details,'\n')
-
         action_details = pid.detailed_movement_information(angle_details)
         # print(action_details,'\n') 
-
         control_command = pid.generate_control_command(action_details)
         # print(control_command)
 
-        # used to active
-        # ! publish pair with X_k update
+        #! publish the twist
         # pub_twist.publish(genTwistMsg(pid.update_value))
         time.sleep(pid.timestep)
 
         #! Calculate X_k
-        current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
+        # print(local_to_global_velocity(pid.update_value, X_k[2]) * pid.timestep)
+        X_update = expand_X_update(local_to_global_velocity(pid.update_value, X_k[2]) * pid.timestep, len(X_k))
+        X_k += X_update
 
         # Normalize the result to between -pi and pi
-        if current_state[2] > math.pi:
-            current_state[2] -= 2 * math.pi
-        if current_state[2] < -math.pi:
-            current_state[2] += 2 * math.pi
-        # print(current_state)
+        if X_k[2] > math.pi:
+            X_k[2] -= 2 * math.pi
+        if X_k[2] < -math.pi:
+            X_k[2] += 2 * math.pi
 
-        X_k = current_state
+        step += 1 
+        print("X_k:",step,X_k)
+
+        #! Calculate State_cov
+        State_cov = State_cov + expand_diag_matrix(Q_m, len(X_k))
+        print(State_cov)
 
         #! Check whether we observe a marker
         found_marker, marker_info = getMarkerPos(listener)
@@ -350,42 +385,37 @@ if __name__ == "__main__":
                 #! Expend State_cov
                 State_cov = expand_and_fill_diag_matrix(State_cov, len(X_k), Cov_init)
                 print(State_cov)
-
-        #! Calculate State_cov
-        State_cov = State_cov + expand_diag_matrix(Q_m, len(X_k))
-        # X_k = 
-
     
-        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.12): # check the error between current state and current way point
-            # print("current_state",current_state)
-            # print("target",pid.target)
-            # calculate the current twist
-            angle_details = pid.determine_angle_details(current_state)
-            # print(angle_details,'\n')
+        # while(np.linalg.norm(pid.getError(current_state, wp)) > 0.12): # check the error between current state and current way point
+        #     # print("current_state",current_state)
+        #     # print("target",pid.target)
+        #     # calculate the current twist
+        #     angle_details = pid.determine_angle_details(current_state)
+        #     # print(angle_details,'\n')
 
-            action_details = pid.detailed_movement_information(angle_details)
-            # print(action_details,'\n') 
+        #     action_details = pid.detailed_movement_information(angle_details)
+        #     # print(action_details,'\n') 
 
-            control_command = pid.generate_control_command(action_details)
-            # print(control_command)
+        #     control_command = pid.generate_control_command(action_details)
+        #     # print(control_command)
 
-            # publish the twist
-            # pub_twist.publish(genTwistMsg(pid.update_value))
-            #print(coord(update_value, current_state))
-            time.sleep(pid.timestep)
-            # update the current state
-            # found_marker, marker_info = getMarkerPos(listener)
-            current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
-            # found_state, estimated_state = getCurrentPos(listener)
-            # if found_state:
-            #     current_state = estimated_state
+        #     # publish the twist
+        #     # pub_twist.publish(genTwistMsg(pid.update_value))
+        #     #print(coord(update_value, current_state))
+        #     time.sleep(pid.timestep)
+        #     # update the current state
+        #     # found_marker, marker_info = getMarkerPos(listener)
+        #     current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
+        #     # found_state, estimated_state = getCurrentPos(listener)
+        #     # if found_state:
+        #     #     current_state = estimated_state
             
-            if current_state[2] > math.pi:
-                current_state[2] -= 2 * math.pi
-            if current_state[2] < -math.pi:
-                current_state[2] += 2 * math.pi
-            # print("=====")
-            # print(current_state)
+        #     if current_state[2] > math.pi:
+        #         current_state[2] -= 2 * math.pi
+        #     if current_state[2] < -math.pi:
+        #         current_state[2] += 2 * math.pi
+        #     # print("=====")
+        #     # print(current_state)
     # stop the car and exit
     # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
