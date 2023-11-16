@@ -1,8 +1,6 @@
 import numpy as np
 from math import cos, sin, pi, pow
 
-
-id_dict = {0:1, 3:0, 4:2}
 H = np.array(
     [[-cos(pi/4), -sin(pi/4), 0, cos(pi/4), sin(pi/4)],
     [sin(pi/4), -cos(pi/4), 0, -sin(pi/4), cos(pi/4)]]
@@ -59,10 +57,6 @@ def cut_element_in_matrix_with_position(id, M, id_dict):
     del_diag_vec = cut_element_in_vector_with_position(id, V, id_dict)
     return np.diag(del_diag_vec.T[0])
 
-# def calculate_Kalman_gain_coeff_K(cov_mat, H, R, id, id_dict):
-#     cutted_cov_mat = cut_element_in_matrix_with_position(id, cov_mat, id_dict)
-#     return cutted_cov_mat @ H.T @ np.linalg.inv(H @ cutted_cov_mat @ H.T + R)
-
 def calculate_Kalman_gain_coeff_K(cov_mat, H, R, id, id_dict):
     cutted_cov_mat = cut_element_in_matrix_with_position(id, cov_mat, id_dict)
     intermediate = np.dot(cutted_cov_mat, H.T)
@@ -79,16 +73,18 @@ def calculate_observation_residuals(H, xk, zk, id, id_dict):
     cut_xk = cut_element_in_vector_with_position(id, xk, id_dict)
     return np.dot(H, cut_xk) - np.expand_dims(np.array(zk), axis=1)
 
-def update_state_covariance(cov_mat, H, K):
+def update_state_covariance(cov_mat, H, K, id, id_dict):
     KH = np.dot(K, H)
-    identity_mat = np.ones(KH.shape)
-    return np.dot(identity_mat - KH, cov_mat)
+    padded_KH = pad_zero_in_matrix_with_position(id, KH, id_dict)
+    identity_mat = np.ones(padded_KH.shape)
+    return np.dot(identity_mat - padded_KH, cov_mat)
 
 
 if __name__ == "__main__":
-    id_dict = {0:1, 3:0, 4:2}
+    id_dict = {3:0, 0:1, 1:2}
     dummy_vec = np.array([1, 2, 3, 4, 5])
     dummy_mat = np.diag(dummy_vec)
+    
 
     print('-'*15)
     print("Start testing")
@@ -99,13 +95,15 @@ if __name__ == "__main__":
     print(test_pad_zero_to_n.T)
     print('-'*15)
 
+    # id_dict = {3:0, 0:1, 1:2}
     print(" - Testing function pad_zero_in_vector_with_position()...")
     test_pad_zero_in_position = pad_zero_in_vector_with_position(0, dummy_vec, id_dict)
     print(test_pad_zero_in_position)
     print('-'*15)
 
+    # id_dict = {3:0, 0:1}
     print(" - Testing function pad_zero_in_matrix_with_position()...")
-    test_pad_zero_in_matrix_with_position = pad_zero_in_matrix_with_position(0, dummy_mat, id_dict)
+    test_pad_zero_in_matrix_with_position = pad_zero_in_matrix_with_position(3, dummy_mat, id_dict)
     print(test_pad_zero_in_matrix_with_position)
     print('-'*15)
 
@@ -125,3 +123,6 @@ if __name__ == "__main__":
     print('-'*15)
 
     print(np.dot(H , np.array([2, 2, np.pi/4, 4, 4])))
+
+    test = np.diag([1, 2, 3, 4, 5, 6, 7])
+    print(cut_element_in_matrix_with_position(0, test, id_dict))

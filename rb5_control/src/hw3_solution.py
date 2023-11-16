@@ -11,9 +11,8 @@ import numpy as np
 from math import cos, sin, pi, pow
 from geometry_msgs.msg import Twist
 from tf.transformations import quaternion_matrix, euler_from_quaternion
-from utils import get_H, pad_zero_in_vector_to_n, pad_zero_in_vector_with_position, pad_zero_in_matrix_with_position, \
-    cut_element_in_vector_with_position, cut_element_in_matrix_with_position, calculate_Kalman_gain_coeff_K, \
-    utilize_Kalman_gain_coeff_K, calculate_observation_residuals, update_state_covariance
+from utils import get_H, calculate_Kalman_gain_coeff_K, utilize_Kalman_gain_coeff_K, \
+    calculate_observation_residuals, update_state_covariance
 
 # Global 
 # pid = None
@@ -39,15 +38,21 @@ class PIDcontroller:
         self.I = 0
         self.lastError = 0
         self.timestep = 0.1
+        # self.timestep = 1
 
         self.maximumValue = 1
-        self.angular_tolerance = 0.1
+        self.angular_tolerance = 0.9
         self.last_action_type = "move"
         self.update_value = np.array([0.0,0.0,0.0])
 
         #TODO: which match the real velocity
         self.v_straight = 0.085
-        self.v_rotate = 0.75
+        self.v_rotate = 0.85
+        #TODO: 8
+        # self.v_straight = 0.095
+        # self.v_rotate = 0.75
+        # self.v_straight = 0.0
+        # self.v_rotate = 0.0
 
     def setTarget(self, state):
         """
@@ -225,7 +230,7 @@ def getMarkerPos(l):
 
                 # result = np.array([trans[0], trans[1], angle])
                 result = [(trans[2], -1*trans[0]), i]
-                print(result)
+                print("marker result: ", result)
                 # print("***marker_id={}***\n, trans[0]={:.3f}, trans[1]={:.3f}, trans[2]={:.3f}, euler={}"
                 #         .format(i, trans[0], trans[1], trans[2], euler))
                 foundMarker = True
@@ -310,16 +315,48 @@ if __name__ == "__main__":
     step_2 = 0
 
     rospy.init_node("hw3")
-    # pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
+    pub_twist = rospy.Publisher("/twist", Twist, queue_size=1)
 
     listener = tf.TransformListener()
 
     #square
     waypoint = np.array([
-                        [0.8,0.0,0.0], 
-                        # [0.8,0.0, math.pi/2],
-                        # [0.8,0.8,math.pi], 
-                        # [0.0,0.8, -math.pi/2],
+                        #! one point
+                        # [0.4, 0.0, 0.0],
+                        # [0.4, 0.0, math.pi/4],
+
+                        # [0.683, 0.283, math.pi/4],
+                        # [0.683, 0.283, math.pi/2],
+
+                        # [0.683, 0.683, math.pi/2]
+                        # [0.683, 0.683, 3*math.pi/4],
+
+                        # [0.4, 0.966, 3*math.pi/4],                 
+                        # [0.4, 0.966, math.pi],
+
+                        # [0.0, 0.966, math.pi],
+                        # [0.0, 0.966, 5*math.pi/4],
+
+                        # [-0.283, 0.683, 5*math.pi/4],
+                        # [-0.283, 0.683, 3*math.pi/2],
+
+                        # [-0.283, 0.283, 3*math.pi/2],
+                        # [-0.283, 0.283, 7*math.pi/4],
+
+                        # [0.0, 0.0, 7*math.pi/4],
+                        # [0.0, 0.0, 0.0]
+
+
+                        # [0.4, 0.0, 0.0],
+                        # [0.4, 0.0, math.pi/2],
+
+                        # [0.4,0.4,math.pi/2], 
+                        # [0.4,0.4,math.pi], 
+
+                        # [0.0,0.4, math.pi],
+                        # [0.0,0.4, 3*math.pi/2],
+
+                        [0.0,0.0, 3*math.pi/2],
                         # [0.0,0.0,0.0]
                         ])         
 
@@ -329,13 +366,13 @@ if __name__ == "__main__":
     marker_dic = {}
 
     #! init X_k
-    X_k = np.array([0.0,0.0,0.0])
+    X_k = np.array([0.0,0.4, 3*math.pi/2])
 
     print("X:",step, X_k)
 
     # ! active 
     found_marker, marker_info = getMarkerPos(listener)
-        # pub_twist.publish(genTwistMsg(pid.update_value))
+    pub_twist.publish(genTwistMsg(pid.update_value))
     time.sleep(1)
     
     for wp in waypoint:
@@ -352,7 +389,7 @@ if __name__ == "__main__":
         # print(control_command)
 
         #! publish the twist
-        # pub_twist.publish(genTwistMsg(pid.update_value))
+        pub_twist.publish(genTwistMsg(pid.update_value))
         time.sleep(pid.timestep)
 
         #! Calculate X_k
@@ -365,12 +402,9 @@ if __name__ == "__main__":
         if X_k[2] < -math.pi:
             X_k[2] += 2 * math.pi
 
-        step += 1 
-        print("X_k:",step,X_k)
-
         #! Calculate State_cov
         State_cov = State_cov + expand_diag_matrix(Q_m, len(X_k))
-        print(State_cov)
+        # print(State_cov)
 
         #! Check whether we observe a marker
         found_marker, marker_info = getMarkerPos(listener)
@@ -380,45 +414,47 @@ if __name__ == "__main__":
             if marker_name not in marker_dic:
                 #! Add it to the marker_dic
                 marker_dic[marker_name] = len(marker_dic)
-                print(marker_dic)
+                print("marker_dic: ", marker_dic)
                 #! Add it to X_k
                 x_new, y_new = calculate_global_marker_position(X_k[0], X_k[1], X_k[2], marker_info[0][0], marker_info[0][1])
                 X_k = np.append(X_k, x_new)
                 X_k = np.append(X_k, y_new)
-                print(X_k)
+                # print(X_k)
                 #! Expend State_cov
                 State_cov = expand_and_fill_diag_matrix(State_cov, len(X_k), Cov_init)
-                print(State_cov)
+                # print(State_cov)
 
         #! when observe a marker
         if found_marker:
             H_m = get_H(X_k[2])
-            test_cal_ob_residual = calculate_observation_residuals(H_m, X_k, marker_info[0], marker_name, marker_dic)
-            print("residual:", test_cal_ob_residual)
 
             #! gain K
             Kalman_gain_K = calculate_Kalman_gain_coeff_K(State_cov, H_m, R_m, marker_name, marker_dic)
-            print("Kalman_gain_K: ", Kalman_gain_K)
+            # print("Kalman_gain_K: ", Kalman_gain_K)
 
             #! update X_k based on K
             X_k = utilize_Kalman_gain_coeff_K(State_cov, H_m, R_m, X_k, marker_info[0], marker_name, marker_dic)
-            print("X_k_new: ", X_k)
+            # print("X_k_new: ", X_k)
 
-            #! uodate state cov
-            State_cov = update_state_covariance(State_cov, H_m, Kalman_gain_K)
-            print("Updated State_cov: ", State_cov)
+            #! update state cov
+            State_cov = update_state_covariance(State_cov, H_m, Kalman_gain_K, marker_name, marker_dic)
+            # print("Updated State_cov: ", State_cov)
+        
+        step += 1 
+        # X_k = np.round_(X_k, 4)
+        print("X_k:",step,X_k)
 
-        while(np.linalg.norm(pid.getError(X_k[:3], wp)) > 0.12): # check the error between current state and current way point
+        while(np.linalg.norm(pid.getError(X_k[:3], wp)) > 0.11): # check the error between current state and current way point
             #! pid calculate
             angle_details = pid.determine_angle_details(X_k[:3])
-            # print(angle_details,'\n')
+            print(angle_details,'\n')
             action_details = pid.detailed_movement_information(angle_details)
-            # print(action_details,'\n') 
+            print(action_details,'\n') 
             control_command = pid.generate_control_command(action_details)
             # print(control_command)
 
             #! publish the twist
-            # pub_twist.publish(genTwistMsg(pid.update_value))
+            pub_twist.publish(genTwistMsg(pid.update_value))
             time.sleep(pid.timestep)
 
             #! Calculate X_k
@@ -431,12 +467,9 @@ if __name__ == "__main__":
             if X_k[2] < -math.pi:
                 X_k[2] += 2 * math.pi
 
-            step += 1 
-            print("X_k:",step,X_k)
-
             #! Calculate State_cov
             State_cov = State_cov + expand_diag_matrix(Q_m, len(X_k))
-            print(State_cov)
+            # print(State_cov)
 
             #! Check whether we observe a marker
             found_marker, marker_info = getMarkerPos(listener)
@@ -446,36 +479,37 @@ if __name__ == "__main__":
                 if marker_name not in marker_dic:
                     #! Add it to the marker_dic
                     marker_dic[marker_name] = len(marker_dic)
-                    print(marker_dic)
+                    print("marker_dic: ", marker_dic)
                     #! Add it to X_k
                     x_new, y_new = calculate_global_marker_position(X_k[0], X_k[1], X_k[2], marker_info[0][0], marker_info[0][1])
                     X_k = np.append(X_k, x_new)
                     X_k = np.append(X_k, y_new)
-                    print(X_k)
+                    # print(X_k)
                     #! Expend State_cov
                     State_cov = expand_and_fill_diag_matrix(State_cov, len(X_k), Cov_init)
-                    print(State_cov)
+                    # print(State_cov)
 
             #! when observe a marker
             if found_marker:
                 H_m = get_H(X_k[2])
-                test_cal_ob_residual = calculate_observation_residuals(H_m, X_k, marker_info[0], marker_name, marker_dic)
-                print("residual:", test_cal_ob_residual)
 
                 #! gain K
                 Kalman_gain_K = calculate_Kalman_gain_coeff_K(State_cov, H_m, R_m, marker_name, marker_dic)
-                print("Kalman_gain_K: ", Kalman_gain_K)
+                # print("Kalman_gain_K: ", Kalman_gain_K)
 
                 #! update X_k based on K
                 X_k = utilize_Kalman_gain_coeff_K(State_cov, H_m, R_m, X_k, marker_info[0], marker_name, marker_dic)
-                print("X_k_new: ", X_k)
+                # print("X_k_new: ", X_k)
 
                 #! uodate state cov
-                State_cov = update_state_covariance(State_cov, H_m, Kalman_gain_K)
+                State_cov = update_state_covariance(State_cov, H_m, Kalman_gain_K, marker_name, marker_dic)
                 print("Updated State_cov: ", State_cov)
-            
+
+            step += 1 
+            # X_k = np.round_(X_k, 4)
+            print("X_k:",step,X_k)
     #! stop the car and exit
-    # pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
+    pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
 
     
