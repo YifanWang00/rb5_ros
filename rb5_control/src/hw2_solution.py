@@ -140,8 +140,9 @@ if __name__ == "__main__":
 
     waypoint = np.array([[0.0,0.0,0.0], 
                          [1.0,0.0,0.0],
-                         [1.0,2.0,np.pi],
-                         [0.0,0.0,0.0]])
+                        #  [1.0,2.0,np.pi],
+                        #  [0.0,0.0,0.0]
+                         ])
 
     # init pid controller
     pid = PIDcontroller(0.1,0.005,0.005)
@@ -168,6 +169,12 @@ if __name__ == "__main__":
         found_state, estimated_state = getCurrentPos(listener)
         if found_state: # if the tag is detected, we can use it to update current state.
             current_state = estimated_state
+            #!
+            print("found!")
+        
+        #!
+        print(current_state)
+
         while(np.linalg.norm(pid.getError(current_state, wp)) > 0.05): # check the error between current state and current way point
             # calculate the current twist
             update_value = pid.update(current_state)
@@ -180,6 +187,11 @@ if __name__ == "__main__":
             found_state, estimated_state = getCurrentPos(listener)
             if found_state:
                 current_state = estimated_state
+                #!
+                print("found!")
+
+            #!
+            print(current_state)
     # stop the car and exit
     pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
 
