@@ -11,14 +11,6 @@ import numpy as np
 from geometry_msgs.msg import Twist
 from tf.transformations import quaternion_matrix
 
-# Global 
-pid = None
-pub_twist = None
-current_waypoint_index = 0
-# waypoint = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]) 
-current_state = np.array([0.0, 0.0, 0.0]) 
-step_num = 0
-
 class PIDcontroller:
     def __init__(self, Kp, Ki, Kd):
         self.Kp = Kp
@@ -31,12 +23,12 @@ class PIDcontroller:
         self.timestep = 0.1
 
         self.maximumValue = 1
-        self.angular_tolerance = 0.1
+        self.angular_tolerance = 0.9
         self.last_action_type = "move"
         self.update_value = np.array([0.0,0.0,0.0])
 
         self.v_straight = 0.085
-        self.v_rotate = 0.75
+        self.v_rotate = 0.85
 
     def setTarget(self, state):
         """
@@ -91,7 +83,6 @@ class PIDcontroller:
             result = self.v_rotate * flag
         return result
     
-    ###TODO: change points to point_1(state) and point_2(targrt)
     def determine_angle_details(self, current_state):
         """
         Determines the target angle and the angle difference for the robot for each pair of points.
@@ -120,32 +111,26 @@ class PIDcontroller:
         """
         return math.sqrt((point2[0] - point1[0])**2 + (point2[1] - point1[1])**2)
 
-    ###TODO: change to only one action
     def detailed_movement_information(self, angle_details):
 
         angle_diff = round(angle_details["angle_difference_robot_target"], 2)
         # Check if the rounded angle difference is close to any of the four angles for 'move' actions
-        ###TODO: change to only forward and backward, need to focus on tolerance
-        ###TODO: no more need 1.57 and -1.57
         distance = self.calculate_distance((angle_details["current_state"][0], angle_details["current_state"][1]), (angle_details["target"][0], angle_details["target"][1]))
         
         if (abs(angle_diff - 0) <= self.angular_tolerance) and distance > 0.05:
             result = ['move', distance]
             return result
         elif (abs(angle_diff - math.pi) <= self.angular_tolerance or abs(angle_diff + math.pi) <= self.angular_tolerance) and distance > 0.05:
-            ###TODO: distance used to input into pid control, no more need rotation_after_move
             result = ['move', -distance]
             return result
         # For 'rotate' actions
         elif distance > 0.05:
-            ###TODO: notice!!!
             if -math.pi/2 < angle_diff or angle_diff < math.pi/2:
                 rotation_before_move = angle_diff
             elif angle_diff > 0:
                 rotation_before_move = angle_diff - math.pi
             else:
                 rotation_before_move = angle_diff + math.pi
-            ###TODO: distance used to input into pid control, no more need rotation_after_move and distance
             result = ['rotate', rotation_before_move]
             return result
         else:
@@ -153,7 +138,6 @@ class PIDcontroller:
             result = ['rotate', rotation_before_move]
             return result
 
-    ###TODO: need to output right/left/forward/backward
     def generate_control_command(self, detailed_info):
 
         action_type = detailed_info[0]
@@ -167,11 +151,9 @@ class PIDcontroller:
         # For 'move' actions
         if action_type == 'move':
             distance = detailed_info[1]
-            ###TODO: need to add pid control to calculate the x_speed
             # Calculate the speed
             v_x = self.update_x(distance)
             self.update_value = np.array([v_x, 0.0, 0.0])
-            ###TODO: no more need to calculate the rotation time
             control_command = {"command": "move", "rb5_speed": self.update_value}
             self.last_action_type = 'move'
 
@@ -179,10 +161,8 @@ class PIDcontroller:
         elif action_type == 'rotate':
             rotation_before_move = detailed_info[1]
             # Calculate rotation times and move time
-            ###TODO: need to add pid control to calculate the z_speed
             v_z = self.update_z(rotation_before_move)
             self.update_value = np.array([0.0, 0.0, v_z])
-            ###TODO: no more need
             control_command = {"command": "rotate","rb5_speed": self.update_value}
             self.last_action_type = 'rotate'
 
@@ -266,8 +246,14 @@ if __name__ == "__main__":
     current_state = np.array([0.0,0.0,0.0])
     print(current_state)
 
+    # ! active 
+    found_state, estimated_state = getCurrentPos(listener)
+    pub_twist.publish(genTwistMsg(pid.update_value))
+    time.sleep(1)
+
     for wp in waypoint:
         # print("move to way point", wp)
+
         # set wp as the target point
         pid.setTarget(wp)
 
@@ -280,31 +266,28 @@ if __name__ == "__main__":
         control_command = pid.generate_control_command(action_details)
         # print(control_command)
 
-        # used to active
         # publish the twist
         pub_twist.publish(genTwistMsg(pid.update_value))
-        #print(coord(update_value, current_state))
         time.sleep(pid.timestep)
 
         # update the current state
         # noise = np.random.uniform(low=-0.001, high=0.001, size=(3, ))
         # current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10 + noise
         current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
-        # Normalize the result to between -pi and pi
-
+        
         found_state, estimated_state = getCurrentPos(listener)
+
         if found_state: # if the tag is detected, we can use it to update current state.
             current_state = estimated_state
 
+        # Normalize the result to between -pi and pi
         if current_state[2] > math.pi:
             current_state[2] -= 2 * math.pi
         if current_state[2] < -math.pi:
             current_state[2] += 2 * math.pi
         print(current_state)
     
-        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.15): # check the error between current state and current way point
-            # print("current_state",current_state)
-            # print("target",pid.target)
+        while(np.linalg.norm(pid.getError(current_state, wp)) > 0.11): # check the error between current state and current way point
             # calculate the current twist
             angle_details = pid.determine_angle_details(current_state)
             # print(angle_details,'\n')
@@ -317,22 +300,25 @@ if __name__ == "__main__":
 
             # publish the twist
             pub_twist.publish(genTwistMsg(pid.update_value))
-            #print(coord(update_value, current_state))
             time.sleep(pid.timestep)
+
             # update the current state
             # noise = np.random.uniform(low=-0.001, high=0.001, size=(3, ))
             # current_state += local_to_global_velocity(pid.update_value, current_state[2]) * 10 + noise
             current_state += local_to_global_velocity(pid.update_value, current_state[2]) * pid.timestep
+
             found_state, estimated_state = getCurrentPos(listener)
             if found_state:
                 current_state = estimated_state
-            
+
+            # Normalize the result to between -pi and pi
             if current_state[2] > math.pi:
                 current_state[2] -= 2 * math.pi
             if current_state[2] < -math.pi:
                 current_state[2] += 2 * math.pi
             # print("=====")
             print(current_state)
+
     # stop the car and exit
     pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
