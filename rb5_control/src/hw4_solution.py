@@ -27,8 +27,8 @@ class PIDcontroller:
         self.last_action_type = "move"
         self.update_value = np.array([0.0,0.0,0.0])
 
-        self.v_straight = 0.085
-        self.v_rotate = 0.85
+        self.v_straight = 0.2
+        self.v_rotate = 2.0
 
     def setTarget(self, state):
         """
@@ -172,11 +172,12 @@ def getCurrentPos(l):
     """
     Given the tf listener, we consider the camera's z-axis is the header of the car
     """
+    # print("!!!")
     br = tf.TransformBroadcaster()
     result = None
     foundSolution = False
 
-    for i in range(0, 9):
+    for i in range(0, 12):
         camera_name = "camera_" + str(i)
         if l.frameExists(camera_name):
             try:
@@ -233,10 +234,13 @@ if __name__ == "__main__":
     # ! generate waypoint 
     waypoint = np.array([
                         [0.0,0.0,0.0], 
-                        [0.8,0.0, math.pi/2],
-                        [0.8,0.8,math.pi], 
-                        [0.0,0.8, -math.pi/2],
-                        [0.0,0.0,0.0]
+                        [0.0,0.0,np.pi/2],
+                        [0.0,0.0,np.pi],
+                        [0.0,0.0,3*np.pi/2],
+                        # [0.5,0.0,np.pi],
+                        # [0.8,0.8,math.pi], 
+                        # [0.0,0.8, -math.pi/2],
+                        # [0.0,0.0,0.0]
                         ])         
 
     # init pid controller
@@ -252,7 +256,7 @@ if __name__ == "__main__":
     time.sleep(1)
 
     for wp in waypoint:
-        # print("move to way point", wp)
+        print("move to way point", wp)
 
         # set wp as the target point
         pid.setTarget(wp)
@@ -279,6 +283,7 @@ if __name__ == "__main__":
 
         if found_state: # if the tag is detected, we can use it to update current state.
             current_state = estimated_state
+            print("found!")
 
         # Normalize the result to between -pi and pi
         if current_state[2] > math.pi:
@@ -310,6 +315,7 @@ if __name__ == "__main__":
             found_state, estimated_state = getCurrentPos(listener)
             if found_state:
                 current_state = estimated_state
+                print("found!")
 
             # Normalize the result to between -pi and pi
             if current_state[2] > math.pi:

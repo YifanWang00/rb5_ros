@@ -37,7 +37,7 @@ class MegaPiControllerNode:
             direct = twist_cmd.angular.z / abs(twist_cmd.angular.z)
             # self.mpi_ctrl.setFourMotors(-32 * direct, -32 * direct, -32 * direct, -32 * direct)
             # print(-32 * direct, -32 * direct, -32 * direct, -32 * direct)
-            self.mpi_ctrl.carStraight(32 * direct)
+            self.mpi_ctrl.carStraight(30 * direct)
         else:
             self.mpi_ctrl.setFourMotors(0, 0, 0, 0)
         

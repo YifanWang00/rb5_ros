@@ -2,19 +2,22 @@
   <include file="$(find rb5_vision)/launch/rb_camera_main_ocv.launch" />
   <node pkg="april_detection" type="april_detection_node" name="april_detection_node" output="screen" />
   <!-- !we need to add all the tags here -->
-  <node pkg="tf" type="static_transform_publisher" name="marker0_trans" args="2 0 0 0.5 -0.5 0.5 -0.5 map marker_0 50" />
+  <!-- <node pkg="tf" type="static_transform_publisher" name="marker0_trans" args="0.5 0 0 0.5 -0.5 0.5 -0.5 map marker_0 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker1_trans" args="-0.5 0 0 -0.5 -0.5 0.5 0.5 map marker_1 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker2_trans" args="0 0.5 0 -0.71 0.0 0.0 0.71 map marker_2 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker3_trans" args="0 -0.5 0 0.0 0.71 -0.71 0.0 map marker_3 50" /> -->
 
-  <node pkg="tf" type="static_transform_publisher" name="marker1_trans" args="1.5 2 0 -0.5 -0.5 0.5 0.5 map marker_1 50" />
-  <node pkg="tf" type="static_transform_publisher" name="marker2_trans" args="0 1.5 0 0.5 -0.5 0.5 -0.5 map marker_2 50" />
-  <node pkg="tf" type="static_transform_publisher" name="marker3_trans" args="2 1.5 0 -0.5 -0.5 0.5 0.5 map marker_3 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker0_trans" args="0.5 2.0 0.0 -0.71 0.0 0.0 0.71 map marker_0 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker1_trans" args="1.5 2.0 0.0 -0.71 0.0 0.0 0.71 map marker_1 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker2_trans" args="0.0 1.5 0.0 -0.5 -0.5 0.5 0.5 map marker_2 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker3_trans" args="2.0 1.5 0.0 0.5 -0.5 0.5 -0.5 map marker_3 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker4_trans" args="0.0 0.5 0.0 -0.5 -0.5 0.5 0.5 map marker_4 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker5_trans" args="2.0 0.5 0.0 0.5 -0.5 0.5 -0.5 map marker_5 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker6_trans" args="0.5 0.0 0.0 0.0 0.71 -0.71 0.0 map marker_6 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker7_trans" args="1.5 0.0 0.0 0.0 0.71 -0.71 0.0 map marker_7 50" />
 
-  <node pkg="tf" type="static_transform_publisher" name="marker4_trans" args="1 1.2 0 0.5 -0.5 0.5 -0.5 map marker_4 50" />
-  <node pkg="tf" type="static_transform_publisher" name="marker5_trans" args="0.8 1 0 -0.5 -0.5 0.5 0.5 map marker_5 50" />
-  <node pkg="tf" type="static_transform_publisher" name="marker6_trans" args="1.2 1 0 0.5 -0.5 0.5 -0.5 map marker_6 50" />
-  <node pkg="tf" type="static_transform_publisher" name="marker7_trans" args="1 0.8 0 -0.5 -0.5 0.5 0.5 map marker_7 50" />
-
-  <node pkg="tf" type="static_transform_publisher" name="marker8_trans" args="0 0.5 0 0.5 -0.5 0.5 -0.5 map marker_8 50" />
-  <node pkg="tf" type="static_transform_publisher" name="marker9_trans" args="2 0.5 0 -0.5 -0.5 0.5 0.5 map marker_9 50" />
-  <node pkg="tf" type="static_transform_publisher" name="marker10_trans" args="0.5 0 0 0.5 -0.5 0.5 -0.5 map marker_10 50" />
-  <node pkg="tf" type="static_transform_publisher" name="marker11_trans" args="1.5 0 0 -0.5 -0.5 0.5 0.5 map marker_11 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker8_trans" args="1.0 1.2 0.0 0.0 0.71 -0.71 0.0 map marker_8 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker9_trans" args="1.2 1.0 0.0 -0.5 -0.5 0.5 0.5 map marker_9 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker10_trans" args="1.0 0.8 0.0 -0.71 0.0 0.0 0.71 map marker_10 50" />
+  <node pkg="tf" type="static_transform_publisher" name="marker11_trans" args="1.5 0.0 0.0 0.5 -0.5 0.5 -0.5 map marker_11 50" />
 </launch>
