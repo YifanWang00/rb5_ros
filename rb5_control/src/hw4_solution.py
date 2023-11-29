@@ -8,8 +8,11 @@ import tf
 import tf2_ros
 import time
 import numpy as np
+import heapq
 from geometry_msgs.msg import Twist
 from tf.transformations import quaternion_matrix
+from collections import defaultdict
+
 
 class PIDcontroller:
     def __init__(self, Kp, Ki, Kd):
@@ -222,6 +225,163 @@ def local_to_global_velocity(local_velocity, global_orientation):
     global_velocity = np.dot(J, local_velocity)
     return global_velocity
 
+def manhattan_distance(start, goal):
+    """
+    Calculate the Manhattan distance between two points.
+    """
+    return abs(start[0] - goal[0]) + abs(start[1] - goal[1])
+
+def euclidean_distance(start, goal):
+    """
+    Calculate the Euclidean distance between two points.
+    """
+    return ((start[0] - goal[0])**2 + (start[1] - goal[1])**2)**0.5
+
+def generate_map(outer_size, inner_size, grid_size, collision_tolerance):
+    """
+    Create the final grid map with outer and inner squares, both with specified thickness.
+    :param outer_size: Size of the outer square (length of one side).
+    :param inner_size: Size of the inner square (length of one side).
+    :param grid_size: Size of each grid cell.
+    :param collision_tolerance: Thickness of the walls.
+    :return: 2D numpy array representing the grid map.
+    """
+    # Calculate the number of cells in each dimension
+    n_cells = int(outer_size / grid_size) + 2
+
+    # Initialize grid map with zeros (open space)
+    grid_map = np.zeros((n_cells, n_cells))
+
+    # Calculate the thickness in terms of the number of cells
+    thickness_cells = int(collision_tolerance / grid_size)
+
+    # Outer square
+    grid_map[0, :] = 2
+    grid_map[-1, :] = 2
+    grid_map[:, 0] = 2
+    grid_map[:, -1] = 2
+    grid_map[1:1 + thickness_cells, 1:-1] = 1
+    grid_map[-1 - thickness_cells:-1, 1:-1] = 1
+    grid_map[1:-1, 1:1 + thickness_cells] = 1
+    grid_map[1:-1, -1 - thickness_cells:-1] = 1
+
+    # Inner square
+    inner_start = int((n_cells - (inner_size // grid_size)) // 2)
+    inner_end = int(inner_start + (inner_size // grid_size))
+    grid_map[inner_start - thickness_cells:inner_start, inner_start - thickness_cells:inner_end + thickness_cells] = 1
+    grid_map[inner_end:inner_end + thickness_cells, inner_start - thickness_cells:inner_end + thickness_cells] = 1
+    grid_map[inner_start - thickness_cells:inner_end + thickness_cells, inner_start - thickness_cells:inner_start] = 1
+    grid_map[inner_start - thickness_cells:inner_end + thickness_cells, inner_end:inner_end + thickness_cells] = 1
+    grid_map[inner_start:inner_end, inner_start:inner_end] = 2
+
+    return grid_map
+
+def convert_to_right_hand_coordinate(grid_map_point, map_size, grid_size):
+    return (grid_map_point[1]-1, int(map_size/grid_size+1)-grid_map_point[0]-1)
+
+def convert_to_grid_map_coordinate(world_point, map_size, grid_size):
+    return (int(map_size/grid_size+1)-world_point[1]-1, world_point[0]+1)
+
+def a_star_search(grid_map, start, goal, heuristic):
+    """
+    A* search algorithm implementation.
+
+    :param grid_map: 2D numpy array representing the grid map
+    :param start: Starting point (x, y)
+    :param goal: Goal point (x, y)
+    :param heuristic: Heuristic function to estimate distance to the goal
+    :return: A tuple containing the path as a list of points and the cost of the path
+    """
+    # Helper function to reconstruct path from came_from dictionary
+    def reconstruct_path(came_from, current):
+        path = [current]
+        while current in came_from:
+            current = came_from[current]
+            path.append(current)
+        return path[::-1]  # Return reversed path
+    
+    # Initialize the open and closed sets
+    open_set = []
+    came_from = {}
+    start_f_value = heuristic(start, goal)
+    heapq.heappush(open_set, (start_f_value, start))
+    
+    g_score = defaultdict(lambda: float('inf'))
+    g_score[start] = 0
+
+    f_score = defaultdict(lambda: float('inf'))
+    f_score[start] = start_f_value
+
+    # Determine directions based on the heuristic function
+    if heuristic == manhattan_distance:
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # 4 directions for Manhattan distance
+    else:
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]  # 8 directions otherwise
+
+    while open_set:
+        current = heapq.heappop(open_set)[1]
+        if current == goal:
+            path = reconstruct_path(came_from, current)
+            return path, g_score[goal]
+
+        for dx, dy in directions:
+            neighbor = (current[0] + dx, current[1] + dy)
+
+            if (0 <= neighbor[0] < grid_map.shape[0] and
+                0 <= neighbor[1] < grid_map.shape[1] and
+                grid_map[neighbor] == 0):
+
+                move_cost = 1 if dx != 0 and dy != 0 else 1  # Diagonal cost
+                # move_cost = heuristic(current, neighbor)
+
+                tentative_g_score = g_score[current] + move_cost
+                if tentative_g_score < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g_score
+                    f_score[neighbor] = tentative_g_score + heuristic(neighbor, goal)
+                    if neighbor not in open_set:
+                        heapq.heappush(open_set, (f_score[neighbor], neighbor))
+
+    return [], 0
+
+def convert_path_to_waypoints(grid_map_path, grid_size, map_size):
+    """
+    Convert the path from grid coordinates to real-world coordinates, 
+    simplify the path, and calculate the angle at each turn in radians.
+
+    :param grid_map_path: Path as a list of grid coordinates [(x1, y1), (x2, y2), ...]
+    :param grid_size: Size of each grid cell in real-world units
+    :return: Simplified path in real-world coordinates with angles
+    """
+    if not grid_map_path:
+        return []
+
+    def calculate_angle(prev, curr):
+        """Calculate angle in radians between two points."""
+        dx = curr[0] - prev[0]
+        dy = curr[1] - prev[1]
+        return math.atan2(dy, dx)
+    
+    # Convert path to right hand rule coordinate system
+    grid_map_path = [convert_to_right_hand_coordinate(p, map_size, grid_size) for p in grid_map_path]
+
+    # Simplify the path and calculate angles
+    simplified_path = [(grid_map_path[0][0], grid_map_path[0][1], 0)]  # Starting point with angle 0
+    for i in range(1, len(grid_map_path) - 1):
+        prev, curr, next = grid_map_path[i - 1], grid_map_path[i], grid_map_path[i + 1]
+        if (curr[0] - prev[0], curr[1] - prev[1]) != (next[0] - curr[0], next[1] - curr[1]):
+            angle = calculate_angle(prev, curr)
+            simplified_path.append((curr[0], curr[1], angle))
+
+    # Add the goal point
+    angle = calculate_angle(grid_map_path[-2], grid_map_path[-1])
+    simplified_path.append((grid_map_path[-1][0], grid_map_path[-1][1], angle))
+
+    # Convert to real-world coordinates with angles
+    waypoints = [(round(x * grid_size, 2), round(y * grid_size, 2), round(theta, 2)) for x, y, theta in simplified_path]
+
+    return simplified_path, np.array(waypoints)
+
 if __name__ == "__main__":
 
     print("===start===\n")
@@ -232,16 +392,39 @@ if __name__ == "__main__":
     listener = tf.TransformListener()
 
     # ! generate waypoint 
-    waypoint = np.array([
-                        [0.0,0.0,0.0], 
-                        [0.0,0.0,np.pi/2],
-                        [0.0,0.0,np.pi],
-                        [0.0,0.0,3*np.pi/2],
-                        # [0.5,0.0,np.pi],
-                        # [0.8,0.8,math.pi], 
-                        # [0.0,0.8, -math.pi/2],
-                        # [0.0,0.0,0.0]
-                        ])         
+    map_size = 2.0  # meters
+    obstacle_size = 0.4  # meters
+    grid_size = 0.1  # meters
+    collision_tolerance = 0 # meters
+
+    grid_map = generate_map(map_size, obstacle_size, grid_size, collision_tolerance)
+
+    # print(grid_map[1:-1, 1:-1])
+    # print("grid_map shape:", grid_map[1:-1, 1:-1].shape)
+
+    # Testing the function with both Manhattan and Euclidean distances
+    start = (3, 3)
+    goal = (17, 17)
+
+    start = convert_to_grid_map_coordinate(start, map_size, grid_size)
+    goal = convert_to_grid_map_coordinate(goal, map_size, grid_size)
+
+    path_manhattan, cost_manhattan = a_star_search(grid_map, start, goal, manhattan_distance)
+    path_euclidean, cost_euclidean = a_star_search(grid_map, start, goal, euclidean_distance)
+
+    # print(path_euclidean)
+    simplified_path, waypoint = convert_path_to_waypoints(path_euclidean, grid_size, map_size)
+
+    # waypoint = np.array([
+    #                     [0.0,0.0,0.0], 
+    #                     [0.0,0.0,np.pi/2],
+    #                     [0.0,0.0,np.pi],
+    #                     [0.0,0.0,3*np.pi/2],
+    #                     # [0.5,0.0,np.pi],
+    #                     # [0.8,0.8,math.pi], 
+    #                     # [0.0,0.8, -math.pi/2],
+    #                     # [0.0,0.0,0.0]
+    #                     ])         
 
     # init pid controller
     pid = PIDcontroller(0.02,0.005,0.005)
