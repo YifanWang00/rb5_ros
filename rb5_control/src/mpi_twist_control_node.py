@@ -13,10 +13,11 @@ class MegaPiControllerNode:
         self.r = 0.025 # radius of the wheel
         self.lx = 0.055 # half of the distance between front wheel and back wheel
         self.ly = 0.07 # half of the distance between left wheel and right wheel
-        self.calibration = 107.0
+        self.calibration = 15
 
     def twist_callback(self, twist_cmd):
-        desired_twist = self.calibration * np.array([[twist_cmd.linear.x], [twist_cmd.linear.y], [twist_cmd.angular.z]])
+        # desired_twist = self.calibration * np.array([[twist_cmd.linear.x], [twist_cmd.linear.y], [twist_cmd.angular.z]])
+        desired_twist = self.calibration * np.array([[twist_cmd.linear.x],[twist_cmd.angular.z],[twist_cmd.linear.y] ])
         # # calculate the jacobian matrix
         jacobian_matrix = np.array([[1, -1, -(self.lx + self.ly)],
                                      [1, 1, (self.lx + self.ly)],

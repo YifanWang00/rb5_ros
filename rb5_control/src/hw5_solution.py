@@ -24,7 +24,7 @@ class PIDcontroller:
         self.I = np.array([0.0,0.0,0.0])
         self.lastError = np.array([0.0,0.0,0.0])
         self.timestep = 0.1
-        self.maximumValue = 0.02
+        self.maximumValue = 0.5
 
     def setTarget(self, targetx, targety, targetw):
         """
@@ -102,6 +102,7 @@ def getCurrentPos(l):
                 br.sendTransform((trans[0], trans[1], 0), tf.transformations.quaternion_from_euler(0,0,angle), rospy.Time.now(), "base_link", "map")
                 result = np.array([trans[0], trans[1], angle])
                 foundSolution = True
+                print(camera_name)
                 break
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException, tf2_ros.TransformException):
                 print("meet error")
@@ -143,14 +144,14 @@ if __name__ == "__main__":
     listener = tf.TransformListener()
 
     waypoint = np.array([
-                         [0.0,0.0,0.0], 
-                         [1.0,0.0,0.0],
+                        #  [0.0,0.0,0.0], 
+                         [0.0,0.5,0.0],
                         #  [1.0,2.0,np.pi],
                         #  [0.0,0.0,0.0]
                          ])
 
     # init pid controller
-    pid = PIDcontroller(0.1,0.005,0.005)
+    pid = PIDcontroller(1,0.05,0.05)
 
     # init current state
     current_state = np.array([0.0,0.0,0.0])
@@ -173,11 +174,11 @@ if __name__ == "__main__":
         update_value = pid.update(current_state)
         # publish the twist
         pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
-        #print(coord(update_value, current_state))
+        print("speed:",coord(update_value, current_state))
         time.sleep(pid.timestep)
 
         # update the current state
-        current_state += update_value
+        current_state += update_value * pid.timestep
         found_state, estimated_state = getCurrentPos(listener)
         if found_state: # if the tag is detected, we can use it to update current state.
             current_state = estimated_state
@@ -188,11 +189,11 @@ if __name__ == "__main__":
             update_value = pid.update(current_state)
             # publish the twist
             pub_twist.publish(genTwistMsg(coord(update_value, current_state)))
-            #print(coord(update_value, current_state))
+            print("speed:",coord(update_value, current_state))
             time.sleep(pid.timestep)
 
             # update the current state
-            current_state += update_value
+            current_state += update_value * pid.timestep
             found_state, estimated_state = getCurrentPos(listener)
             if found_state:
                 current_state = estimated_state
