@@ -21,6 +21,7 @@ step_2 = 0
 MAX_I = 4
 I = 0
 Obstacle_DIS = 0.15
+waypoint = np.array([0.0, 0.0, 0.0])
 
 Q_m = np.diag([0.05 ** 2, 0.05 ** 2, 0.15 ** 2])
 R_m = np.diag([pow(0.05, 2), pow(0.05, 2)])
@@ -406,140 +407,28 @@ if __name__ == "__main__":
             # ! set wp as the target point
             pid.setTarget(wp)
 
-            #! pid calculate
-            angle_details = pid.determine_angle_details(X_k[:3])
-            # print(angle_details,'\n')
-            action_details = pid.detailed_movement_information(angle_details)
-            # print(action_details,'\n') 
-            control_command = pid.generate_control_command(action_details)
-            # print(control_command)
-
-            #! Check Obstacle
-            found_marker, marker_info = getMarkerPos(listener)
-            while(Obstacle_DIS >= math.sqrt(marker_info[0][0]**2 + marker_info[0][1]**2)) :
-                pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
-                time.sleep(pid.timestep*10)
-
-            #! publish the twist
-            pub_twist.publish(genTwistMsg(pid.update_value))
-            time.sleep(pid.timestep)
-
-            #! Calculate X_k
-            X_update = expand_X_update(local_to_global_velocity(pid.update_value, X_k[2]) * pid.timestep, len(X_k))
-            X_k += X_update
-
-            # Normalize the result to between -pi and pi
-            if X_k[2] > math.pi:
-                X_k[2] -= 2 * math.pi
-            if X_k[2] < -math.pi:
-                X_k[2] += 2 * math.pi
-
-            #! Calculate State_cov
-            State_cov = State_cov + expand_diag_matrix(Q_m, len(X_k))
-            # print(State_cov)
-
-            #! Check whether we observe a marker
-            found_marker, marker_info = getMarkerPos(listener)
-            if found_marker:
-                marker_name = "marker_" + str(marker_info[1])
-                #! If it is a new marker
-                if marker_name not in marker_dic:
-                    #! Add it to the marker_dic
-                    marker_dic[marker_name] = len(marker_dic)
-                    print("marker_dic: ", marker_dic)
-                    #! Add it to X_k
-                    x_new, y_new = calculate_global_marker_position(X_k[0], X_k[1], X_k[2], marker_info[0][0], marker_info[0][1])
-                    X_k = np.append(X_k, x_new)
-                    X_k = np.append(X_k, y_new)
-                    # print(X_k)
-                    #! Expend State_cov
-                    State_cov = expand_and_fill_diag_matrix(State_cov, len(X_k), Cov_init)
-                    # print(State_cov)
-
-            #! when observe a marker
-            if found_marker:
-                H_m = get_H(X_k[2])
-
-                #! gain K
-                Kalman_gain_K = calculate_Kalman_gain_coeff_K(State_cov, H_m, R_m, marker_name, marker_dic)
-                # print("Kalman_gain_K: ", Kalman_gain_K)
-
-                #! update X_k based on K
-                X_k = utilize_Kalman_gain_coeff_K(State_cov, H_m, R_m, X_k, marker_info[0], marker_name, marker_dic)
-                # print("X_k_new: ", X_k)
-
-                #! update state cov
-                State_cov = update_state_covariance(State_cov, H_m, Kalman_gain_K, marker_name, marker_dic)
-                # print("Updated State_cov: ", State_cov)
-            
-            step += 1 
-            # X_k = np.round_(X_k, 4)
-            print("X_k:",step,X_k)
+            X_k, State_cov, step = execute_control_step(pid, pub_twist, listener, X_k, State_cov, Q_m, R_m, marker_dic, Cov_init, step)
 
             while(np.linalg.norm(pid.getError(X_k[:3], wp)) > 0.11): # check the error between current state and current way point
-                #! pid calculate
-                angle_details = pid.determine_angle_details(X_k[:3])
-                # print(angle_details,'\n')
-                action_details = pid.detailed_movement_information(angle_details)
-                # print(action_details,'\n') 
-                control_command = pid.generate_control_command(action_details)
-                # print(control_command)
 
-                #! publish the twist
-                pub_twist.publish(genTwistMsg(pid.update_value))
-                time.sleep(pid.timestep)
+                X_k, State_cov, step = execute_control_step(pid, pub_twist, listener, X_k, State_cov, Q_m, R_m, marker_dic, Cov_init, step)
 
-                #! Calculate X_k
-                X_update = expand_X_update(local_to_global_velocity(pid.update_value, X_k[2]) * pid.timestep, len(X_k))
-                X_k += X_update
+    boundaries = X_k[-24:]
 
-                # Normalize the result to between -pi and pi
-                if X_k[2] > math.pi:
-                    X_k[2] -= 2 * math.pi
-                if X_k[2] < -math.pi:
-                    X_k[2] += 2 * math.pi
+    print("===start generate waypoints===\n")
 
-                #! Calculate State_cov
-                State_cov = State_cov + expand_diag_matrix(Q_m, len(X_k))
-                # print(State_cov)
+    print("===start sweep===\n")
+    for wp in waypoint:
+        # print("move to way point", wp)
+        # ! set wp as the target point
+        pid.setTarget(wp)
 
-                #! Check whether we observe a marker
-                found_marker, marker_info = getMarkerPos(listener)
-                if found_marker:
-                    marker_name = "marker_" + str(marker_info[1])
-                    #! If it is a new marker
-                    if marker_name not in marker_dic:
-                        #! Add it to the marker_dic
-                        marker_dic[marker_name] = len(marker_dic)
-                        print("marker_dic: ", marker_dic)
-                        #! Add it to X_k
-                        x_new, y_new = calculate_global_marker_position(X_k[0], X_k[1], X_k[2], marker_info[0][0], marker_info[0][1])
-                        X_k = np.append(X_k, x_new)
-                        X_k = np.append(X_k, y_new)
-                        # print(X_k)
-                        #! Expend State_cov
-                        State_cov = expand_and_fill_diag_matrix(State_cov, len(X_k), Cov_init)
-                        # print(State_cov)
+        X_k, State_cov, step = execute_control_step(pid, pub_twist, listener, X_k, State_cov, Q_m, R_m, marker_dic, Cov_init, step)
 
-                #! when observe a marker
-                if found_marker:
-                    H_m = get_H(X_k[2])
+        while(np.linalg.norm(pid.getError(X_k[:3], wp)) > 0.11): # check the error between current state and current way point
 
-                    #! gain K
-                    Kalman_gain_K = calculate_Kalman_gain_coeff_K(State_cov, H_m, R_m, marker_name, marker_dic)
-                    # print("Kalman_gain_K: ", Kalman_gain_K)
+            X_k, State_cov, step = execute_control_step(pid, pub_twist, listener, X_k, State_cov, Q_m, R_m, marker_dic, Cov_init, step)
 
-                    #! update X_k based on K
-                    X_k = utilize_Kalman_gain_coeff_K(State_cov, H_m, R_m, X_k, marker_info[0], marker_name, marker_dic)
-                    # print("X_k_new: ", X_k)
-
-                    #! uodate state cov
-                    State_cov = update_state_covariance(State_cov, H_m, Kalman_gain_K, marker_name, marker_dic)
-                    print("Updated State_cov: ", State_cov)
-
-                step += 1 
-                # X_k = np.round_(X_k, 4)
-                print("X_k:",step,X_k)
     #! stop the car and exit
     pub_twist.publish(genTwistMsg(np.array([0.0,0.0,0.0])))
     print("===done===!\n")
