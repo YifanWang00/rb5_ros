@@ -21,7 +21,7 @@ step_2 = 0
 MAX_I = 4
 I = 0
 Obstacle_DIS = 0.15
-waypoint = np.array([0.0, 0.0, 0.0])
+waypoints = np.array([0.0, 0.0, 0.0])
 
 Q_m = np.diag([0.05 ** 2, 0.05 ** 2, 0.15 ** 2])
 R_m = np.diag([pow(0.05, 2), pow(0.05, 2)])
@@ -408,15 +408,16 @@ def generate_map(side_length, grid_size, collision_tolerance):
     grid_map[1:-1, -1 - thickness_cells:-1] = 1
 
     start = (1+thickness_cells, 1+thickness_cells)
-    goal = (n_cells-1-(1+thickness_cells), n_cells-1-(1+thickness_cells))
+    goal = (n_cells-1-(1+thickness_cells), 1+thickness_cells)
 
     return grid_map, start, goal
-def plan_path(grid_map, start, goal):
+
+def plan_path(start, goal):
     # action_list = ['up', 'right', 'down', 'right']
     action_list = [
-        (0, goal[1]-start[1]),
+        (0, goal[0]-start[0]),
         (1, 0),
-        (0, start[1]-goal[1]),
+        (0, start[0]-goal[0]),
         (1, 0)
     ]
     action_count = 0
@@ -429,12 +430,10 @@ def plan_path(grid_map, start, goal):
         grid_waypoints.append(curr)
         action_count += 1
     print(grid_waypoints)
-    waypoints = []
-    coverage = 0
 
-    return grid_waypoints, coverage
+    return grid_waypoints
 
-def convert_path_to_waypoints(grid_map_path, grid_size, map_size):
+def convert_path_to_waypoints(grid_map_path, grid_size, map_size, landmarks):
     if not grid_map_path:
         return []
 
@@ -444,28 +443,34 @@ def convert_path_to_waypoints(grid_map_path, grid_size, map_size):
         dy = curr[1] - prev[1]
         return math.atan2(dy, dx)
     
-    def convert_to_right_hand_coordinate(grid_map_point, map_size, grid_size):
-        return (grid_map_point[1]-1, int(map_size/grid_size+1)-grid_map_point[0]-1)
+    def convert_to_real_world_coordinate(grid_map_point):
+        return (grid_map_point[0]-0.5, grid_map_point[1]-0.5)
     
-    # Convert path to right hand rule coordinate system
-    grid_map_path = [convert_to_right_hand_coordinate(p, map_size, grid_size) for p in grid_map_path]
 
-    # Simplify the path and calculate angles
-    simplified_path = [(grid_map_path[0][0], grid_map_path[0][1], 0)]  # Starting point with angle 0
-    for i in range(1, len(grid_map_path) - 1):
-        prev, curr, next = grid_map_path[i - 1], grid_map_path[i], grid_map_path[i + 1]
-        if (curr[0] - prev[0], curr[1] - prev[1]) != (next[0] - curr[0], next[1] - curr[1]):
-            angle = calculate_angle(prev, curr)
-            simplified_path.append((curr[0], curr[1], angle))
+    # Group landmarks into sides
+    grouped_landmarks = group_landmarks(landmarks)
+    
+    # Find intersections to get corners
+    corners = find_corners(grouped_landmarks)
 
-    # Add the goal point
+    slam_x = corners['bottom_right'][0] - corners['bottom_left'][0]
+    slam_y = corners['upper_left'][1] - corners['bottom_left'][1]
+    print(slam_x, slam_y)
+    scale = slam_x / slam_y
+
+    grid_map_path = [convert_to_real_world_coordinate(p) for p in grid_map_path]
+
+    waypoints =  [(grid_map_path[0][0], grid_map_path[0][1], 0)]
+    for i in range(1, len(grid_map_path)):
+        prev, curr = grid_map_path[i - 1], grid_map_path[i]
+        angle = calculate_angle(prev, curr)
+        waypoints.append((curr[0], curr[1], angle))
     angle = calculate_angle(grid_map_path[-2], grid_map_path[-1])
-    simplified_path.append((grid_map_path[-1][0], grid_map_path[-1][1], angle))
+    waypoints.append((grid_map_path[-1][0], grid_map_path[-1][1], angle))
+    waypoints = [(round(x * grid_size * scale * slam_y/2, 2), round(y * grid_size * slam_y/2, 2), round(theta, 2)) for x, y, theta in waypoints]
 
-    # Convert to real-world coordinates with angles
-    waypoints = [(round(x * grid_size, 2), round(y * grid_size, 2), round(theta, 2)) for x, y, theta in simplified_path]
 
-    return simplified_path, np.array(waypoints)
+    return grid_map_path, np.array(waypoints)
 
 #=====================================
 if __name__ == "__main__":
@@ -503,7 +508,7 @@ if __name__ == "__main__":
     while(len(X_k) <= 25 and I <= MAX_I):
     #square
         I += 1
-        waypoint = np.array([
+        waypoints = np.array([
                             #! one point
                             [0.2, -0.2, math.pi/2],
                             [0.2, 0.2, math.pi],
@@ -525,23 +530,23 @@ if __name__ == "__main__":
     boundaries = X_k[-24:]
 
     print("===start generate waypoints===\n")
-
-    # ! gain corners of the boundary
-    grouped_landmarks = group_landmarks(boundaries)
-    corners = find_corners(grouped_landmarks)
     
+    side_length = 200
+    grid_size = 20
+    collision_tolerance = 20
+
     # ! generate sim map
-    grid_map, start, goal = generate_map(200, 10, 20)
+    grid_map, start, goal = generate_map(side_length, grid_size, collision_tolerance)
 
     # ! generate sim path 
-    grid_path, coverage = plan_path(grid_map, start, goal)
+    grid_path = plan_path(start, goal)
 
     # ! generate sweep wp 
-    path, points = convert_path_to_waypoints(grid_path, 10, 200)
-    wp = points
-
+    _, points = convert_path_to_waypoints(grid_path, grid_size, side_length, boundaries)
+    waypoints =  points
+    
     print("===start sweep===\n")
-    for wp in waypoint:
+    for wp in waypoints:
         # print("move to way point", wp)
         # ! set wp as the target point
         pid.setTarget(wp)
