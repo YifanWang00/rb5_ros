@@ -359,6 +359,115 @@ def execute_control_step(pid, pub_twist, listener, X_k, State_cov, Q_m, R_m, mar
     # X_k = np.round_(X_k, 4)
     print("X_k:",step,X_k)
 
+#! Generate Waypoints=====================================
+# Function to group landmarks into sides
+def group_landmarks(landmarks):
+    x_sorted_landmarks = landmarks[np.argsort(landmarks[:, 0])]
+    y_sorted_landmarks = landmarks[np.argsort(landmarks[:, 1])]
+
+    grouped_landmarks = {'left':[], 'right':[], 'bottom':[], 'upper':[]}
+    grouped_landmarks['left'] = x_sorted_landmarks[0:3, :]
+    grouped_landmarks['right'] = x_sorted_landmarks[-3:, :]
+    grouped_landmarks['bottom'] = y_sorted_landmarks[0:3, :]
+    grouped_landmarks['upper'] = y_sorted_landmarks[-3:, :]
+
+    return grouped_landmarks
+
+def find_corners(grouped_landmarks):
+    x_left = np.mean([x for x in grouped_landmarks['left'][:,0]])
+    x_right = np.mean([x for x in grouped_landmarks['right'][:,0]])
+    y_bottom = np.mean([y for y in grouped_landmarks['bottom'][:,1]])
+    y_upper = np.mean([y for y in grouped_landmarks['upper'][:,1]])
+
+    corners = {}
+    corners['bottom_left'] = [x_left, y_bottom]
+    corners['bottom_right'] = [x_right, y_bottom]
+    corners['upper_left'] = [x_left, y_upper]
+    corners['upper_right'] = [x_right, y_upper]
+
+    return corners
+
+def generate_map(side_length, grid_size, collision_tolerance):
+    # Calculate the number of cells in each dimension
+    n_cells = int(side_length / grid_size) + 2
+
+    # Initialize grid map with zeros (open space)
+    grid_map = np.zeros((n_cells, n_cells))
+
+    # Calculate the thickness in terms of the number of cells
+    thickness_cells = int(collision_tolerance / grid_size)
+
+    # Outer square
+    grid_map[0, :] = 2
+    grid_map[-1, :] = 2
+    grid_map[:, 0] = 2
+    grid_map[:, -1] = 2
+    grid_map[1:1 + thickness_cells, 1:-1] = 1
+    grid_map[-1 - thickness_cells:-1, 1:-1] = 1
+    grid_map[1:-1, 1:1 + thickness_cells] = 1
+    grid_map[1:-1, -1 - thickness_cells:-1] = 1
+
+    start = (1+thickness_cells, 1+thickness_cells)
+    goal = (n_cells-1-(1+thickness_cells), n_cells-1-(1+thickness_cells))
+
+    return grid_map, start, goal
+def plan_path(grid_map, start, goal):
+    # action_list = ['up', 'right', 'down', 'right']
+    action_list = [
+        (0, goal[1]-start[1]),
+        (1, 0),
+        (0, start[1]-goal[1]),
+        (1, 0)
+    ]
+    action_count = 0
+
+    curr = start
+    grid_waypoints = [start]
+    while curr != goal:
+        action = action_list[action_count % 4]
+        curr = (curr[0]+action[0], curr[1]+action[1])
+        grid_waypoints.append(curr)
+        action_count += 1
+    print(grid_waypoints)
+    waypoints = []
+    coverage = 0
+
+    return grid_waypoints, coverage
+
+def convert_path_to_waypoints(grid_map_path, grid_size, map_size):
+    if not grid_map_path:
+        return []
+
+    def calculate_angle(prev, curr):
+        """Calculate angle in radians between two points."""
+        dx = curr[0] - prev[0]
+        dy = curr[1] - prev[1]
+        return math.atan2(dy, dx)
+    
+    def convert_to_right_hand_coordinate(grid_map_point, map_size, grid_size):
+        return (grid_map_point[1]-1, int(map_size/grid_size+1)-grid_map_point[0]-1)
+    
+    # Convert path to right hand rule coordinate system
+    grid_map_path = [convert_to_right_hand_coordinate(p, map_size, grid_size) for p in grid_map_path]
+
+    # Simplify the path and calculate angles
+    simplified_path = [(grid_map_path[0][0], grid_map_path[0][1], 0)]  # Starting point with angle 0
+    for i in range(1, len(grid_map_path) - 1):
+        prev, curr, next = grid_map_path[i - 1], grid_map_path[i], grid_map_path[i + 1]
+        if (curr[0] - prev[0], curr[1] - prev[1]) != (next[0] - curr[0], next[1] - curr[1]):
+            angle = calculate_angle(prev, curr)
+            simplified_path.append((curr[0], curr[1], angle))
+
+    # Add the goal point
+    angle = calculate_angle(grid_map_path[-2], grid_map_path[-1])
+    simplified_path.append((grid_map_path[-1][0], grid_map_path[-1][1], angle))
+
+    # Convert to real-world coordinates with angles
+    waypoints = [(round(x * grid_size, 2), round(y * grid_size, 2), round(theta, 2)) for x, y, theta in simplified_path]
+
+    return simplified_path, np.array(waypoints)
+
+#=====================================
 if __name__ == "__main__":
 
     print("===start init===\n")
@@ -380,7 +489,7 @@ if __name__ == "__main__":
     marker_dic = {}
 
     #! init X_k
-    X_k = np.array([0.0, 0.0, 0.0])
+    X_k = np.array([-0.2, -0.2, 0.0])
 
     print("X:",step, X_k)
 
@@ -396,10 +505,10 @@ if __name__ == "__main__":
         I += 1
         waypoint = np.array([
                             #! one point
-                            [0.4, 0.0, math.pi/2],
-                            [0.4, 0.4, math.pi],
-                            [0.0, 0.4, -math.pi/2]
-                            [0.0, 0.0, 0.0],
+                            [0.2, -0.2, math.pi/2],
+                            [0.2, 0.2, math.pi],
+                            [-0.2, 0.2, -math.pi/2]
+                            [-0.2, 0.2, 0.0],
                             ])         
 
         for wp in waypoint:
@@ -416,6 +525,20 @@ if __name__ == "__main__":
     boundaries = X_k[-24:]
 
     print("===start generate waypoints===\n")
+
+    # ! gain corners of the boundary
+    grouped_landmarks = group_landmarks(boundaries)
+    corners = find_corners(grouped_landmarks)
+    
+    # ! generate sim map
+    grid_map, start, goal = generate_map(200, 10, 20)
+
+    # ! generate sim path 
+    grid_path, coverage = plan_path(grid_map, start, goal)
+
+    # ! generate sweep wp 
+    path, points = convert_path_to_waypoints(grid_path, 10, 200)
+    wp = points
 
     print("===start sweep===\n")
     for wp in waypoint:
